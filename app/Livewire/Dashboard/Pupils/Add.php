@@ -3,6 +3,8 @@
 namespace App\Livewire\Dashboard\Pupils;
 
 use Livewire\Component;
+use App\Models\NutritionalStatus;
+use Carbon\Carbon;
 
 class Add extends Component
 {
@@ -12,25 +14,41 @@ class Add extends Component
     public $weight;
     public $height;
     public $sex;
+    public $grade;
+    public $section;
     public $age_years_months;
     public $age_years;
     public $age_months;
     public $bmi;
     public $nutritional_status;
     public $height_for_age;
+    public $fourps = false;
+    public $ip = false;
+    public $pardo = false;
+    public $dewormed = false;
+    public $parent_consent_milk = false;
+    public $sbfp_previous_beneficiary = false;
 
     protected $rules = [
         'name' => 'required|string|max:255',
-        'date_of_birth' => 'nullable|date',
+        'date_of_birth' => 'required|date',
         'date_of_weighing' => 'nullable|date',
-        'weight' => 'nullable|numeric',
-        'height' => 'nullable|numeric',
-        'sex' => 'nullable|string',
+        'weight' => 'required|numeric',
+        'height' => 'required|numeric',
+        'sex' => 'required|string',
+        'grade' => 'nullable|string|max:100',
+        'section' => 'nullable|string|max:100',
         'age_years' => 'nullable|integer',
         'age_months' => 'nullable|integer',
         'bmi' => 'nullable|numeric',
         'nutritional_status' => 'nullable|string',
         'height_for_age' => 'nullable|string',
+        'fourps' => 'boolean',
+        'ip' => 'boolean',
+        'pardo' => 'boolean',
+        'dewormed' => 'boolean',
+        'parent_consent_milk' => 'boolean',
+        'sbfp_previous_beneficiary' => 'boolean',
     ];
 
     public function mount()
@@ -42,9 +60,44 @@ class Add extends Component
     {
         $this->validate();
 
-        // For now, just flash success and reset fields
-        session()->flash('success', 'Pupil saved (stub)');
-        $this->reset(['name','date_of_birth','date_of_weighing','weight','height','sex','age_years_months','age_years','age_months','bmi','nutritional_status','height_for_age']);
+        // compute age_years and age_months from birthday + weighing date when possible
+        if ($this->date_of_birth) {
+            $weighDate = $this->date_of_weighing ? Carbon::parse($this->date_of_weighing) : Carbon::now();
+            $dob = Carbon::parse($this->date_of_birth);
+            $years = $dob->diffInYears($weighDate);
+            $months = $dob->diffInMonths($weighDate) - ($years * 12);
+            $this->age_years = $years;
+            $this->age_months = $months;
+        }
+
+        $record = NutritionalStatus::create([
+            'full_name' => $this->name,
+            'birthday' => $this->date_of_birth ?: null,
+            'sex' => $this->sex ?: null,
+            'weight' => $this->weight ?: null,
+            'height' => $this->height ?: null,
+            'grade' => trim($this->grade),
+            'section' => trim($this->section),
+            'age_years' => $this->age_years ?: null,
+            'age_months' => $this->age_months ?: null,
+            'bmi' => $this->bmi ?: null,
+            'nutritional_status' => $this->nutritional_status ?: null,
+            'height_for_age' => $this->height_for_age ?: null,
+            'date_of_weighing' => $this->date_of_weighing ?: null,
+            // additional flags
+            '_4ps' => $this->fourps ? 1 : 0,
+            'ip' => $this->ip ? 1 : 0,
+            'pardo' => $this->pardo ? 1 : 0,
+            'dewormed' => $this->dewormed ? 1 : 0,
+            'parent_consent_milk' => $this->parent_consent_milk ? 1 : 0,
+            'sbfp_previous_beneficiary' => $this->sbfp_previous_beneficiary ? 1 : 0,
+        ]);
+
+        // notify the front-end so the UI can show lastly added pupil
+        $this->dispatch('pupil-saved', $record->full_name);
+
+        session()->flash('success', 'Pupil saved');
+        $this->reset(['name','date_of_birth','date_of_weighing','weight','height','sex','grade','section','age_years_months','age_years','age_months','bmi','nutritional_status','height_for_age','fourps','ip','pardo','dewormed','parent_consent_milk','sbfp_previous_beneficiary']);
         // reset date_of_weighing to today
         $this->date_of_weighing = date('Y-m-d');
     }

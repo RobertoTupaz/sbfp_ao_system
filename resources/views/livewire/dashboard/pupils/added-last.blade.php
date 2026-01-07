@@ -1,3 +1,4 @@
 <div>
-    <span>Student Lastly added</span>
+    <span id="lastlyAddedPupil">Added last : </span>
+    <span class="text-blue-500">{{ $name }}</span>
 </div>

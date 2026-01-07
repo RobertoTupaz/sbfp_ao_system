@@ -21,10 +21,20 @@ class NutritionalStatus extends Model
         'bmi',
         'nutritional_status',
         'height_for_age',
+        'date_of_weighing',
+        'grade',
+        'section',
+        '4ps',
+        'ip',
+        'pardo',
+        'dewormed',
+        'parent_consent_milk',
+        'sbfp_previous_beneficiary',
     ];
 
     protected $casts = [
         'birthday' => 'date',
+        'date_of_weighing' => 'date',
         'weight' => 'float',
         'height' => 'float',
         'bmi' => 'float',

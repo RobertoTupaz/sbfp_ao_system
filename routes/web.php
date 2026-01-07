@@ -19,8 +19,12 @@ Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::view('generate_forms', 'generate_forms')
+    ->middleware(['auth', 'verified'])
+    ->name('generate_forms');
+
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

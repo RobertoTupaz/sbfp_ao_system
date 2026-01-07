@@ -27,6 +27,24 @@
                 @enderror
             </div>
 
+            <div class="flex flex-col min-w-[80px]">
+                <label class="text-sm font-medium text-gray-700">Grade</label>
+                <input id="grade" type="text" wire:model.defer="grade"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                @error('grade')
+                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="flex flex-col min-w-[140px]">
+                <label class="text-sm font-medium text-gray-700">Section</label>
+                <input id="section" type="text" wire:model.defer="section"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                @error('section')
+                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                @enderror
+            </div>
+
             <div class="flex flex-col min-w-[180px]">
                 <label class="text-sm font-medium text-gray-700">Birthday</label>
                 <input id="date_of_birth" type="date" wire:model.defer="date_of_birth"
@@ -36,7 +54,7 @@
                 @enderror
             </div>
 
-            <div class="flex flex-col min-w-[140px]">
+            <div class="flex flex-col min-w-[80px]">
                 <label class="text-sm font-medium text-gray-700">Sex</label>
                 <select id="sex" wire:model.defer="sex"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -109,6 +127,36 @@
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>
+
+            <div class="flex flex-col gap-2 min-w-[240px]">
+                <label class="text-sm font-medium text-gray-700">Other flags</label>
+                <div class="flex flex-wrap gap-2">
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="fourps" class="form-checkbox" />
+                        <span class="ml-2">4ps</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="ip" class="form-checkbox" />
+                        <span class="ml-2">ip</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="pardo" class="form-checkbox" />
+                        <span class="ml-2">pardo</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="dewormed" class="form-checkbox" />
+                        <span class="ml-2">dewormed</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="parent_consent_milk" class="form-checkbox" />
+                        <span class="ml-2">parent_consent_milk</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="sbfp_previous_beneficiary" class="form-checkbox" />
+                        <span class="ml-2">sbfp_previous_beneficiary</span>
+                    </label>
+                </div>
+            </div>
         </div>
         <div class="flex items-center min-w-[160px]">
             <button type="submit"
@@ -123,6 +171,7 @@
                 var d = new Date(value);
                 return isNaN(d.getTime()) ? null : d;
             }
+
 
             function calcAge(dob, refDate) {
                 if (!dob) return null;
@@ -160,35 +209,7 @@
                 return 'Overweight';
             }
 
-            var whoHfaTable = null;
-            var whoHfaLoaded = false;
-            // load WHO sample table (replace with full WHO table for production)
-            fetch('/data/who_hfa_sample.json')
-                .then(function(resp){ if (resp.ok) return resp.json(); throw new Error('WHO HFA fetch failed'); })
-                .then(function(json){ whoHfaTable = json; whoHfaLoaded = true; try { recalc(); } catch(e){} })
-                .catch(function(err){ console.error('WHO HFA load failed', err); whoHfaTable = null; whoHfaLoaded = false; });
-
-            function calcHeightForAge(height, ageYears, sex) {
-                if (!height || !ageYears) return '';
-                var ageMonths = Math.round(ageYears * 12);
-                sex = (sex || '').toUpperCase();
-                if (!whoHfaTable || !sex || !whoHfaTable[sex]) {
-                    // WHO table unavailable or sex missing — do not provide a misleading classification
-                    return '';
-                }
-                var table = whoHfaTable[sex] || whoHfaTable['M'];
-                // find nearest available age key
-                var keys = Object.keys(table).map(Number).sort(function(a,b){return a-b;});
-                var nearest = keys.reduce(function(prev, curr){
-                    return (Math.abs(curr - ageMonths) < Math.abs(prev - ageMonths) ? curr : prev);
-                }, keys[0]);
-                var thresholds = table[String(nearest)];
-                if(!thresholds) return '';
-                if(height <= thresholds.minus3) return 'Severely stunted';
-                if(height <= thresholds.minus2) return 'Stunted';
-                if(height >= thresholds.plus2) return 'Tall';
-                return 'Normal';
-            }
+            // Height-for-age is computed via server API at /api/get-hfa
 
             function dispatchInput(el, value) {
                 if (!el) return;
@@ -236,11 +257,26 @@
                     ageYears = a2.years + (a2.months / 12);
                 }
                 var sexVal = sexEl && sexEl.value ? sexEl.value.toUpperCase() : null;
-                if (ht && ageYears) {
-                    if (whoHfaLoaded && whoHfaTable && sexVal) {
-                        dispatchInput(hfaEl, calcHeightForAge(ht, Math.max(1, ageYears), sexVal));
+                if (ht && ageYears && sexVal) {
+                    var ageMonthsRounded = Math.round(ageYears * 12);
+                    // Only query API for ages supported by server (controller validates 60-228 months)
+                    if (ageMonthsRounded >= 60 && ageMonthsRounded <= 228) {
+                        var genderParam = (sexVal === 'M') ? 'male' : (sexVal === 'F' ? 'female' : '');
+                        if (genderParam) {
+                            fetch('/api/get-hfa?age_months=' + encodeURIComponent(ageMonthsRounded) + '&height_cm=' + encodeURIComponent(ht) + '&gender=' + encodeURIComponent(genderParam))
+                                .then(function(resp){ if (resp.ok) return resp.json(); throw new Error('HFA API failed'); })
+                                .then(function(json){
+                                    dispatchInput(hfaEl, json.status || '');
+                                })
+                                .catch(function(err){
+                                    console.error('HFA API error', err);
+                                    dispatchInput(hfaEl, '');
+                                });
+                        } else {
+                            dispatchInput(hfaEl, '');
+                        }
                     } else {
-                        // WHO data not ready or sex missing — leave blank to avoid misleading result
+                        // Age out of API supported range — leave blank
                         dispatchInput(hfaEl, '');
                     }
                 } else {
@@ -254,9 +290,21 @@
                 el.addEventListener('change', recalc);
             });
 
+
             // initial calc on load
             document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(recalc, 250);
+            });
+
+            // update lastlyAddedPupil when a pupil is saved via Livewire
+            window.addEventListener('pupil-saved', function(e) {
+                try {
+                    var el = document.getElementById('lastlyAddedPupil');
+                    if (!el) return;
+                    el.textContent = e && e.detail && e.detail.name ? e.detail.name : 'Student Lastly added';
+                } catch (err) {
+                    console.error('Error updating lastlyAddedPupil', err);
+                }
             });
         })();
     </script>

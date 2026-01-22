@@ -216,6 +216,7 @@ class Buttons extends Component
 
             session()->flash('success', 'Beneficiaries count saved.');
             Log::info('Beneficiaries count saved: ' . $this->beneficiariesCount);
+            $this->dispatch('beneficiaries-saved', ['count' => $this->beneficiariesCount]);
         } catch (\Throwable $e) {
             Log::error('Error saving beneficiaries count: ' . $e->getMessage());
             session()->flash('error', 'Failed to save beneficiaries count: ' . $e->getMessage());

@@ -19,6 +19,10 @@ Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::view('edit_beneficiaries', 'edit_beneficiaries')
+    ->middleware(['auth', 'verified'])
+    ->name('edit_beneficiaries');
+
 Route::view('generate_forms', 'generate_forms')
     ->middleware(['auth', 'verified'])
     ->name('generate_forms');

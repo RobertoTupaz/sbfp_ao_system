@@ -62,7 +62,7 @@
     </div>
     <h3 class="text-2xl font-semibold text-gray-800 mb-6">Generate Forms</h3>
 
-    {{-- <div class="mb-4">
+    <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">Beneficiaries count</label>
         <div class="flex gap-2 items-center max-w-sm">
             <input type="number" min="0" wire:model.defer="beneficiariesCount"
@@ -71,7 +71,7 @@
                 class="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
         </div>
         <div class="text-sm text-gray-500 mt-2">Set number of beneficiaries for the generated forms</div>
-    </div> --}}
+    </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <a href="#" role="button" aria-label="Generate Form 1" wire:click.prevent="generateForm1"
@@ -167,6 +167,29 @@
                 a.remove();
             } catch (err) {
                 console.error('JSON download error', err);
+            }
+        });
+
+        window.addEventListener('beneficiaries-saved', function (e) {
+            try {
+                var detail = e && e.detail ? e.detail : null;
+                var count = null;
+                if (detail && typeof detail === 'object' && 'count' in detail) count = detail.count;
+                if (!count && detail && typeof detail !== 'object') count = detail;
+                var msg = 'Beneficiaries count saved' + (count !== null ? ': ' + count : '.');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Saved',
+                        text: msg,
+                        icon: 'success',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    alert(msg);
+                }
+            } catch (err) {
+                console.error('SweetAlert error', err);
             }
         });
     })();

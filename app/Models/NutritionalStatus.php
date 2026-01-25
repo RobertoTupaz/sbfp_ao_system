@@ -12,6 +12,9 @@ class NutritionalStatus extends Model
     protected $table = 'nutritional_statuses';
     protected $fillable = [
         'full_name',
+        'last_name',
+        'first_name',
+        'suffix_name',
         'birthday',
         'sex',
         'weight',

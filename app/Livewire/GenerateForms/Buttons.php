@@ -46,7 +46,7 @@ class Buttons extends Component
             $endRow = 0;
 
             // fetch records from database
-            $records = NutritionalStatus::orderBy('id')->get();
+            $records = NutritionalStatus::where("isBeneficiary", "=", true)->orderBy('grade')->get();
 
             foreach ($records as $index => $rec) {
                 $row = $startRow + $index;
@@ -78,6 +78,10 @@ class Buttons extends Component
                 $sheet->setCellValueByColumnAndRow(18, $row, $rec->dewormed == 1 ? 'Yes' : 'No');
                 $sheet->setCellValueByColumnAndRow(19, $row, $rec->parent_consent_milk == 1 ? 'Yes' : 'No');
                 $sheet->setCellValueByColumnAndRow(20, $row, $rec->sbfp_previous_beneficiary == 1 ? 'Yes' : 'No');
+
+                $sheet->setCellValueByColumnAndRow(24, $row, $rec->first_name ?? '');
+                $sheet->setCellValueByColumnAndRow(25, $row, $rec->last_name ?? '');
+                $sheet->setCellValueByColumnAndRow(26, $row, $rec->suffix_name ?? '');
 
                 $endRow = $row;
             }
@@ -124,6 +128,255 @@ class Buttons extends Component
 
             session()->flash('success', 'Form1.xlsx generated for download.');
             Log::info($outFileName . ' successfully written with ' . $records->count() . ' records.');
+
+            // dispatch browser event to trigger download of the generated public file
+            $downloadUrl = asset('exel/' . $outFileName);
+            $this->dispatch('form1-ready', $downloadUrl);
+            Log::info('Form1 download URL dispatched: ' . $downloadUrl);
+        } catch (\Throwable $e) {
+            Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
+        }
+    }
+
+    public function generateSnsElem()
+    {
+        $template = public_path('exel/sns_elem.xlsx');
+        if (!file_exists($template)) {
+            session()->flash('error', 'sns_elem.xlsx not found in public/exel');
+            Log::error('sns_elem write failed - template not found: ' . $template);
+            return;
+        }
+
+        try {
+            // load the existing spreadsheet
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // fetch records from database
+            $kinderStats = NutritionalStatus::where('grade', 'k')
+                ->selectRaw('
+                    COUNT(*) as total,
+                    SUM(sex = "m") as male,
+
+                    SUM(sex = "m" AND nutritional_status = "severely wasted") as Kinder_sw_male,
+                    SUM(sex = "m" AND nutritional_status = "wasted") as Kinder_wasted_male,
+                    SUM(sex = "m" AND nutritional_status = "normal") as Kinder_weight_normal_male,
+                    SUM(sex = "m" AND nutritional_status = "overweight") as Kinder_overweight_male,
+
+                    SUM(sex = "m" AND height_for_age = "severely stunted") as kinder_ss_male,
+                    SUM(sex = "m" AND height_for_age = "stunted") as kinder_stunted_male,
+                    SUM(sex = "m" AND height_for_age = "normal") as kinder_height_normal_male,
+                    SUM(sex = "m" AND height_for_age = "tall") as kinder_tall_male,
+
+                    SUM(sex = "f") as kinder_female,
+
+                    SUM(sex = "f" AND nutritional_status = "severely wasted") as kinder_sw_female,
+                    SUM(sex = "f" AND nutritional_status = "wasted") as kinder_wasted_female,
+                    SUM(sex = "f" AND nutritional_status = "normal") as kinder_weight_normal_female,
+                    SUM(sex = "f" AND nutritional_status = "overweight") as kinder_overweight_female,
+
+                    SUM(sex = "f" AND height_for_age = "severely stunted") as kinder_ss_female,
+                    SUM(sex = "f" AND height_for_age = "stunted") as kinder_stunted_female,
+                    SUM(sex = "f" AND height_for_age = "normal") as kinder_hfa_normal_female,
+                    SUM(sex = "f" AND height_for_age = "tall") as kinder_tall_female
+                ')
+                ->first();
+
+            Log::info('Kinder Stats: ' . json_encode($kinderStats));
+
+            $sheet->setCellValueByColumnAndRow(3, 10, $kinderStats->male ?? 0);
+            $sheet->setCellValueByColumnAndRow(6, 10, $kinderStats->Kinder_sw_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(8, 10, $kinderStats->Kinder_wasted_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 10, $kinderStats->Kinder_weight_normal_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(12, 10, $kinderStats->Kinder_overweight_male ?? 0);
+            // $sheet->setCellValueByColumnAndRow(14, 10, $kinderStats->Kinder_overweight_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(16, 10, $kinderStats->kinder_ss_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(18, 10, $kinderStats->kinder_stunted_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(20, 10, $kinderStats->kinder_height_normal_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(22, 10, $kinderStats->kinder_tall_male ?? 0);
+
+            $sheet->setCellValueByColumnAndRow(3, 11, $kinderStats->female ?? 0);
+            $sheet->setCellValueByColumnAndRow(6, 11, $kinderStats->Kinder_sw_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(8, 11, $kinderStats->Kinder_wasted_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 11, $kinderStats->Kinder_weight_normal_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(12, 11, $kinderStats->Kinder_overweight_female ?? 0);
+            // $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->Kinder_overweight_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(16, 11, $kinderStats->kinder_ss_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(18, 11, $kinderStats->kinder_stunted_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(20, 11, $kinderStats->kinder_height_normal_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(22, 11, $kinderStats->kinder_tall_female ?? 0);
+
+
+            $gradeStats = [];
+            // starting row in the template
+            $startRow = 13;
+            $endRow = 0;
+
+            for ($grade = 1; $grade <= 6; $grade++) {
+
+                $gradeStats[$grade] = NutritionalStatus::where('grade', (string) $grade)
+                    ->selectRaw('
+                        COUNT(*) as total,
+
+                        SUM(sex = "m") as male,
+                        SUM(sex = "m" AND nutritional_status = "severely wasted") as sw_male,
+                        SUM(sex = "m" AND nutritional_status = "wasted") as wasted_male,
+                        SUM(sex = "m" AND nutritional_status = "normal") as weight_normal_male,
+                        SUM(sex = "m" AND nutritional_status = "overweight") as overweight_male,
+
+                        SUM(sex = "m" AND height_for_age = "severely stunted") as ss_male,
+                        SUM(sex = "m" AND height_for_age = "stunted") as stunted_male,
+                        SUM(sex = "m" AND height_for_age = "normal") as hfa_normal_male,
+                        SUM(sex = "m" AND height_for_age = "tall") as tall_male,
+
+                        SUM(sex = "f") as female,
+                        SUM(sex = "f" AND nutritional_status = "severely wasted") as sw_female,
+                        SUM(sex = "f" AND nutritional_status = "wasted") as wasted_female,
+                        SUM(sex = "f" AND nutritional_status = "normal") as weight_normal_female,
+                        SUM(sex = "f" AND nutritional_status = "overweight") as overweight_female,
+
+                        SUM(sex = "f" AND height_for_age = "severely stunted") as ss_female,
+                        SUM(sex = "f" AND height_for_age = "stunted") as stunted_female,
+                        SUM(sex = "f" AND height_for_age = "normal") as hfa_normal_female,
+                        SUM(sex = "f" AND height_for_age = "tall") as tall_female
+                    ')
+                    ->first();
+            }
+
+            foreach ($gradeStats as $gradeStat) {
+                $sheet->setCellValueByColumnAndRow(3, $startRow, $gradeStat->male ?? 0);
+                $sheet->setCellValueByColumnAndRow(6, $startRow, $gradeStat->sw_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(8, $startRow, $gradeStat->wasted_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(10, $startRow, $gradeStat->weight_normal_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(12, $startRow, $gradeStat->overweight_male ?? 0);
+                // $sheet->setCellValueByColumnAndRow(14, $startRow, $gradeStat->overweight_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(16, $startRow, $gradeStat->ss_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(18, $startRow, $gradeStat->stunted_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(20, $startRow, $gradeStat->hfa_normal_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(22, $startRow, $gradeStat->tall_male ?? 0);
+
+                $startRow++;
+
+                $sheet->setCellValueByColumnAndRow(3, ($startRow), $gradeStat->female ?? 0);
+                $sheet->setCellValueByColumnAndRow(6, ($startRow), $gradeStat->sw_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(8, ($startRow), $gradeStat->wasted_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(10, ($startRow), $gradeStat->weight_normal_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(12, ($startRow), $gradeStat->overweight_female ?? 0);
+                // $sheet->setCellValueByColumnAndRow(14, ($startRow), $gradeStat->overweight_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(16, ($startRow), $gradeStat->ss_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(18, ($startRow), $gradeStat->stunted_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(20, ($startRow), $gradeStat->hfa_normal_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(22, ($startRow), $gradeStat->tall_female ?? 0);
+
+                $startRow = $startRow + 2;
+                $endRow = $startRow + 1;
+            }
+
+            // save spreadsheet to a new temp file so the original template remains unchanged
+            $outFileName = 'SNS_Elem_' . time() . '.xlsx';
+            $outFile = public_path('exel/' . $outFileName);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($outFile);
+
+            session()->flash('success', 'Form1.xlsx generated for download.');
+
+            // dispatch browser event to trigger download of the generated public file
+            $downloadUrl = asset('exel/' . $outFileName);
+            $this->dispatch('form1-ready', $downloadUrl);
+            Log::info('Form1 download URL dispatched: ' . $downloadUrl);
+        } catch (\Throwable $e) {
+            Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
+        }
+    }
+
+    public function generateSnsHighSchool()
+    {
+        $template = public_path('exel/sns_highschool.xlsx');
+        if (!file_exists($template)) {
+            session()->flash('error', 'sns_highschool.xlsx not found in public/exel');
+            Log::error('sns_highschool write failed - template not found: ' . $template);
+            return;
+        }
+
+        try {
+            // load the existing spreadsheet
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $gradeStats = [];
+            // starting row in the template
+            $startRow = 10;
+            $endRow = 0;
+
+            for ($grade = 7; $grade <= 12; $grade++) {
+
+                $gradeStats[$grade] = NutritionalStatus::where('grade', (string) $grade)
+                    ->selectRaw('
+                        COUNT(*) as total,
+
+                        SUM(sex = "m") as male,
+                        SUM(sex = "m" AND nutritional_status = "severely wasted") as sw_male,
+                        SUM(sex = "m" AND nutritional_status = "wasted") as wasted_male,
+                        SUM(sex = "m" AND nutritional_status = "normal") as weight_normal_male,
+                        SUM(sex = "m" AND nutritional_status = "overweight") as overweight_male,
+
+                        SUM(sex = "m" AND height_for_age = "severely stunted") as ss_male,
+                        SUM(sex = "m" AND height_for_age = "stunted") as stunted_male,
+                        SUM(sex = "m" AND height_for_age = "normal") as hfa_normal_male,
+                        SUM(sex = "m" AND height_for_age = "tall") as tall_male,
+
+                        SUM(sex = "f") as female,
+                        SUM(sex = "f" AND nutritional_status = "severely wasted") as sw_female,
+                        SUM(sex = "f" AND nutritional_status = "wasted") as wasted_female,
+                        SUM(sex = "f" AND nutritional_status = "normal") as weight_normal_female,
+                        SUM(sex = "f" AND nutritional_status = "overweight") as overweight_female,
+
+                        SUM(sex = "f" AND height_for_age = "severely stunted") as ss_female,
+                        SUM(sex = "f" AND height_for_age = "stunted") as stunted_female,
+                        SUM(sex = "f" AND height_for_age = "normal") as hfa_normal_female,
+                        SUM(sex = "f" AND height_for_age = "tall") as tall_female
+                    ')
+                    ->first();
+            }
+
+            foreach ($gradeStats as $gradeStat) {
+                $sheet->setCellValueByColumnAndRow(3, $startRow, $gradeStat->male ?? 0);
+                $sheet->setCellValueByColumnAndRow(6, $startRow, $gradeStat->sw_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(8, $startRow, $gradeStat->wasted_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(10, $startRow, $gradeStat->weight_normal_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(12, $startRow, $gradeStat->overweight_male ?? 0);
+                // $sheet->setCellValueByColumnAndRow(14, $startRow, $gradeStat->overweight_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(16, $startRow, $gradeStat->ss_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(18, $startRow, $gradeStat->stunted_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(20, $startRow, $gradeStat->hfa_normal_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(22, $startRow, $gradeStat->tall_male ?? 0);
+
+                $startRow++;
+
+                $sheet->setCellValueByColumnAndRow(3, ($startRow), $gradeStat->female ?? 0);
+                $sheet->setCellValueByColumnAndRow(6, ($startRow), $gradeStat->sw_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(8, ($startRow), $gradeStat->wasted_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(10, ($startRow), $gradeStat->weight_normal_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(12, ($startRow), $gradeStat->overweight_female ?? 0);
+                // $sheet->setCellValueByColumnAndRow(14, ($startRow), $gradeStat->overweight_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(16, ($startRow), $gradeStat->ss_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(18, ($startRow), $gradeStat->stunted_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(20, ($startRow), $gradeStat->hfa_normal_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(22, ($startRow), $gradeStat->tall_female ?? 0);
+
+                $startRow = $startRow + 2;
+                $endRow = $startRow + 1;
+            }
+
+            // save spreadsheet to a new temp file so the original template remains unchanged
+            $outFileName = 'SNS_HighSchool_' . time() . '.xlsx';
+            $outFile = public_path('exel/' . $outFileName);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($outFile);
+
+            session()->flash('success', 'Form1.xlsx generated for download.');
 
             // dispatch browser event to trigger download of the generated public file
             $downloadUrl = asset('exel/' . $outFileName);

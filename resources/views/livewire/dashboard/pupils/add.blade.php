@@ -18,19 +18,52 @@
 
     <form wire:submit.prevent="savePupil">
         <div class="flex gap-4 items-start justify-center overflow-x-auto py-2">
-            <div class="flex flex-col min-w-[220px]">
-                <label class="text-sm font-medium text-gray-700">Name</label>
-                <input id="name" type="text" wire:model.defer="name"
+            <div class="flex flex-col min-w-[180px]">
+                <label class="text-sm font-medium text-gray-700">First Name</label>
+                <input id="first_name" type="text" wire:model.defer="first_name"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-                @error('name')
+                @error('first_name')
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>
 
-            <div class="flex flex-col min-w-[80px]">
-                <label class="text-sm font-medium text-gray-700">Grade</label>
-                <input id="grade" type="text" wire:model.defer="grade"
+            <div class="flex flex-col min-w-[180px]">
+                <label class="text-sm font-medium text-gray-700">Last Name</label>
+                <input id="last_name" type="text" wire:model="last_name"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                @error('last_name')
+                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="flex flex-col min-w-[120px]">
+                <label class="text-sm font-medium text-gray-700">Suffix</label>
+                <input id="suffix_name" type="text" wire:model.defer="suffix_name"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                @error('suffix_name')
+                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="flex flex-col min-w-[140px]">
+                <label class="text-sm font-medium text-gray-700">Grade</label>
+                <select id="grade" wire:model.defer="grade" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">--</option>
+                    <option value="k">Kinder</option>
+                    <option value="1">Grade 1</option>
+                    <option value="2">Grade 2</option>
+                    <option value="3">Grade 3</option>
+                    <option value="4">Grade 4</option>
+                    <option value="5">Grade 5</option>
+                    <option value="6">Grade 6</option>
+                    <option value="7">Grade 7</option>
+                    <option value="8">Grade 8</option>
+                    <option value="9">Grade 9</option>
+                    <option value="10">Grade 10</option>
+                    <option value="11">Grade 11</option>
+                    <option value="12">Grade 12</option>
+                </select>
                 @error('grade')
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
@@ -38,13 +71,14 @@
 
             <div class="flex flex-col min-w-[140px]">
                 <label class="text-sm font-medium text-gray-700">Section</label>
-                <input id="section" type="text" wire:model.defer="section"
+                <input id="section" type="text" wire:model.defer="section" required
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                 @error('section')
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>
-
+        </div>
+        <div class="flex gap-4 items-start justify-center overflow-x-auto py-2">
             <div class="flex flex-col min-w-[180px]">
                 <label class="text-sm font-medium text-gray-700">Birthday</label>
                 <input id="date_of_birth" type="date" wire:model.defer="date_of_birth"
@@ -84,17 +118,49 @@
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>
+
+                        <div class="flex flex-col gap-2 min-w-[240px]">
+                <label class="text-sm font-medium text-gray-700">Other flags</label>
+                <div class="flex flex-wrap gap-2">
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="fourps" class="form-checkbox" />
+                        <span class="ml-2">4ps</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="ip" class="form-checkbox" />
+                        <span class="ml-2">ip</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="pardo" class="form-checkbox" />
+                        <span class="ml-2">pardo</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="dewormed" class="form-checkbox" />
+                        <span class="ml-2">dewormed</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="parent_consent_milk" class="form-checkbox" />
+                        <span class="ml-2">parent_consent_milk</span>
+                    </label>
+                    <label class="inline-flex items-center text-sm">
+                        <input type="checkbox" wire:model.defer="sbfp_previous_beneficiary" class="form-checkbox" />
+                        <span class="ml-2">sbfp_previous_beneficiary</span>
+                    </label>
+                </div>
+            </div>
         </div>
         <div class="flex gap-4 items-center justify-center overflow-x-auto py-2">
             <div class="flex gap-2 items-center min-w-[200px]">
                 <div class="flex flex-col w-1/2">
                     <label class="text-sm font-medium text-gray-700">Age (years)</label>
-                    <input id="age_years" type="number" min="0" wire:model.defer="age_years" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                    <input id="age_years" type="number" min="0" wire:model.defer="age_years"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                     @error('age_years') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
                 <div class="flex flex-col w-1/2">
                     <label class="text-sm font-medium text-gray-700">Months</label>
-                    <input id="age_months" type="number" min="0" max="11" wire:model.defer="age_months" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                    <input id="age_months" type="number" min="0" max="11" wire:model.defer="age_months"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                     @error('age_months') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
             </div>
@@ -127,36 +193,6 @@
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>
-
-            <div class="flex flex-col gap-2 min-w-[240px]">
-                <label class="text-sm font-medium text-gray-700">Other flags</label>
-                <div class="flex flex-wrap gap-2">
-                    <label class="inline-flex items-center text-sm">
-                        <input type="checkbox" wire:model.defer="fourps" class="form-checkbox" />
-                        <span class="ml-2">4ps</span>
-                    </label>
-                    <label class="inline-flex items-center text-sm">
-                        <input type="checkbox" wire:model.defer="ip" class="form-checkbox" />
-                        <span class="ml-2">ip</span>
-                    </label>
-                    <label class="inline-flex items-center text-sm">
-                        <input type="checkbox" wire:model.defer="pardo" class="form-checkbox" />
-                        <span class="ml-2">pardo</span>
-                    </label>
-                    <label class="inline-flex items-center text-sm">
-                        <input type="checkbox" wire:model.defer="dewormed" class="form-checkbox" />
-                        <span class="ml-2">dewormed</span>
-                    </label>
-                    <label class="inline-flex items-center text-sm">
-                        <input type="checkbox" wire:model.defer="parent_consent_milk" class="form-checkbox" />
-                        <span class="ml-2">parent_consent_milk</span>
-                    </label>
-                    <label class="inline-flex items-center text-sm">
-                        <input type="checkbox" wire:model.defer="sbfp_previous_beneficiary" class="form-checkbox" />
-                        <span class="ml-2">sbfp_previous_beneficiary</span>
-                    </label>
-                </div>
-            </div>
         </div>
         <div class="flex items-center min-w-[160px]">
             <button type="submit"
@@ -165,7 +201,7 @@
     </form>
 
     <script>
-        (function() {
+        (function () {
             function parseDate(value) {
                 if (!value) return null;
                 var d = new Date(value);
@@ -264,11 +300,11 @@
                         var genderParam = (sexVal === 'M') ? 'male' : (sexVal === 'F' ? 'female' : '');
                         if (genderParam) {
                             fetch('/api/get-hfa?age_months=' + encodeURIComponent(ageMonthsRounded) + '&height_cm=' + encodeURIComponent(ht) + '&gender=' + encodeURIComponent(genderParam))
-                                .then(function(resp){ if (resp.ok) return resp.json(); throw new Error('HFA API failed'); })
-                                .then(function(json){
+                                .then(function (resp) { if (resp.ok) return resp.json(); throw new Error('HFA API failed'); })
+                                .then(function (json) {
                                     dispatchInput(hfaEl, json.status || '');
                                 })
-                                .catch(function(err){
+                                .catch(function (err) {
                                     console.error('HFA API error', err);
                                     dispatchInput(hfaEl, '');
                                 });
@@ -284,7 +320,7 @@
                 }
             }
 
-            [dobEl, weighEl, weightEl, heightEl, sexEl].forEach(function(el) {
+            [dobEl, weighEl, weightEl, heightEl, sexEl].forEach(function (el) {
                 if (!el) return;
                 el.addEventListener('input', recalc);
                 el.addEventListener('change', recalc);
@@ -292,12 +328,12 @@
 
 
             // initial calc on load
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 setTimeout(recalc, 250);
             });
 
             // update lastlyAddedPupil when a pupil is saved via Livewire
-            window.addEventListener('pupil-saved', function(e) {
+            window.addEventListener('pupil-saved', function (e) {
                 try {
                     var el = document.getElementById('lastlyAddedPupil');
                     if (!el) return;

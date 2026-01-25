@@ -5,10 +5,13 @@ namespace App\Livewire\Dashboard\Pupils;
 use Livewire\Component;
 use App\Models\NutritionalStatus;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class Add extends Component
 {
-    public $name;
+    public $first_name;
+    public $last_name;
+    public $suffix_name;
     public $date_of_birth;
     public $date_of_weighing;
     public $weight;
@@ -30,14 +33,16 @@ class Add extends Component
     public $sbfp_previous_beneficiary = false;
 
     protected $rules = [
-        'name' => 'required|string|max:255',
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'suffix_name' => 'nullable|string|max:100',
         'date_of_birth' => 'required|date',
         'date_of_weighing' => 'nullable|date',
         'weight' => 'required|numeric',
         'height' => 'required|numeric',
         'sex' => 'required|string',
-        'grade' => 'nullable|string|max:100',
-        'section' => 'nullable|string|max:100',
+        'grade' => 'required|string|max:100',
+        'section' => 'required|string|max:100',
         'age_years' => 'nullable|integer',
         'age_months' => 'nullable|integer',
         'bmi' => 'nullable|numeric',
@@ -70,8 +75,16 @@ class Add extends Component
             $this->age_months = $months;
         }
 
+        $fullName = trim("{$this->last_name}, {$this->first_name} {$this->suffix_name}");
+        // Remove trailing comma and extra spaces if suffix_name is empty
+        $fullName = preg_replace('/,\s*$/', '', $fullName);
+        
+        Log::info($this->last_name);
         $record = NutritionalStatus::create([
-            'full_name' => $this->name,
+            'full_name' => $fullName,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
+            'suffix_name' => $this->suffix_name ?: null,
             'birthday' => $this->date_of_birth ?: null,
             'sex' => $this->sex ?: null,
             'weight' => $this->weight ?: null,
@@ -97,7 +110,7 @@ class Add extends Component
         $this->dispatch('pupil-saved', $record->full_name);
 
         session()->flash('success', 'Pupil saved');
-        $this->reset(['name','date_of_birth','date_of_weighing','weight','height','sex','grade','section','age_years_months','age_years','age_months','bmi','nutritional_status','height_for_age','fourps','ip','pardo','dewormed','parent_consent_milk','sbfp_previous_beneficiary']);
+        $this->reset(['first_name','last_name','suffix_name','date_of_birth','date_of_weighing','weight','height','sex','age_years_months','age_years','age_months','bmi','nutritional_status','height_for_age','fourps','ip','pardo','dewormed','parent_consent_milk','sbfp_previous_beneficiary']);
         // reset date_of_weighing to today
         $this->date_of_weighing = date('Y-m-d');
     }

@@ -22,6 +22,8 @@ class BeneficiariesList extends Component
     #[On('primary_secondary_saved')]
     public function getBeneficiaries()
     {
+        NutritionalStatus::query()->update(['isBeneficiary' => false]);
+
         $beneficiariesCount = Beneficiaries::first();
         $primary = PrimarySecondaryBeneficiaries::where('name', 'Primary')->first();
         $beneficiaries = null;

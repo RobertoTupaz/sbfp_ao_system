@@ -1,4 +1,65 @@
 <div class="max-w-5xl mx-auto px-4">
+    {{-- <h3 class="text-2xl font-semibold text-gray-800 mb-6">Generate JSON</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div id="generateJSON" class="group block bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="flex items-center justify-center mb-4">
+                <div wire:loading wire:target="generateJson" class="flex items-center justify-center">
+                    <svg class="animate-spin h-12 w-12 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="generateJson">
+                    <svg class="w-12 h-12 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M12 4v4m0 8v4M4 12h4m8 0h4M6.3 6.3l2.8 2.8m6.6 6.6l2.8 2.8M6.3 17.7l2.8-2.8m6.6-6.6l2.8-2.8" />
+                    </svg>
+                </div>
+            </div>
+
+            <div class="text-lg font-medium text-gray-800">
+                <a href="#" role="button" aria-label="Export JSON" wire:click.prevent="generateJson"
+                    wire:loading.attr="disabled" wire:target="generateJson"
+                    class="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">
+                    <span wire:loading.remove wire:target="generateJson">Export JSON</span>
+                    <span wire:loading wire:target="generateJson">Preparing...</span>
+                </a>
+            </div>
+            <div class="text-sm text-gray-500 mt-2">Export `nutritional_statuses` table as JSON file</div>
+        </div>
+        <div id="uploadJSON" class="group block bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="flex items-center justify-center mb-4">
+                <div wire:loading wire:target="importJson" class="flex items-center justify-center">
+                    <svg class="animate-spin h-12 w-12 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="importJson">
+                    <svg class="w-12 h-12 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M4 7h16M4 12h16M4 17h16" />
+                    </svg>
+                </div>
+            </div>
+
+            <div class="text-lg font-medium text-gray-800">
+                <div class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded">
+                    <input type="file" wire:model="uploadJson" accept=".json" class="mb-3 w-full" />
+                    <button type="button" aria-label="Upload JSON" wire:click.prevent="importJson"
+                        wire:loading.attr="disabled" wire:target="importJson"
+                        class="w-full px-3 py-2 text-sm text-gray-700 bg-white border rounded">Upload JSON</button>
+                </div>
+            </div>
+            <div class="text-sm text-gray-500 mt-2">Upload a JSON export to import into `nutritional_statuses` table</div>
+        </div>
+    </div> --}}
     <h3 class="text-2xl font-semibold text-gray-800 mb-6">Generate Forms</h3>
 
     <div class="mb-4">
@@ -26,7 +87,7 @@
             <div class="text-sm text-gray-500 mt-2">Generate SNS Elementary Form</div>
         </a>
 
-        <a wire:click.prevent="generateSnsHighSchool" role="button" aria-label="Generate SNS High School Form"
+        <a href="#" role="button" aria-label="Generate SNS High School Form"
             class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
             <div class="flex items-center justify-center mb-4">
                 <svg class="w-12 h-12 text-cyan-600 group-hover:text-cyan-700" xmlns="http://www.w3.org/2000/svg"

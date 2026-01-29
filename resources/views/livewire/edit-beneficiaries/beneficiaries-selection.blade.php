@@ -1,13 +1,29 @@
 <div style="font-family:system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;">
     <div style="display:flex;gap:16px;flex-wrap:wrap;">
-        <section style="flex:1;min-width:300px;border:1px solid #e6e6e6;padding:16px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+        <section
+            style="flex:1;min-width:300px;border:1px solid #e6e6e6;padding:16px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03);">
             <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <span class="text-2xl">Beneficiaries</span>
             </header>
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
                 <div>
                     <legend style="font-weight:600;margin-bottom:8px;">Grade</legend>
-                    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" wire:model="primary_all_kinder" /> All Kinder</label>
+                    <label style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" wire:model="primary_all_kinder" />
+                        All Kinder
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" wire:model="primary_all_grade_1" />
+                        All Grade 1
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" wire:model="primary_all_grade_2" />
+                        All Grade 2
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" wire:model="primary_all_grade_3" />
+                        All Grade 3
+                    </label>
                 </div>
             </div>
         </section>
@@ -15,7 +31,9 @@
     <div style="width:100%;display:flex;justify-content:center;margin-top:14px;">
         <div style="max-width:900px;width:100%;display:flex;justify-content:center;">
             <div style="width:100%;">
-                <button wire:click="save" wire:loading.attr="disabled" style="width:100%;background:#0b74ff;color:#fff;border:none;padding:12px;border-radius:8px;cursor:pointer;display:block;">Set Beneficiaries</button>
+                <button wire:click="save" wire:loading.attr="disabled"
+                    style="width:100%;background:#0b74ff;color:#fff;border:none;padding:12px;border-radius:8px;cursor:pointer;display:block;">Set
+                    Beneficiaries</button>
             </div>
         </div>
     </div>

@@ -2,12 +2,14 @@
 
 namespace App\Livewire\EditBeneficiaries;
 
+use App\Models\NutritionalStatus;
 use Livewire\Component;
 use App\Models\PrimarySecondaryBeneficiaries;
 use Illuminate\Support\Facades\Log;
 
 class BeneficiariesSelection extends Component
 {
+    public $allBeneficiaries;
     public $primary_name;
     public $primary_all_kinder;
     public $primary_all_grade_1;
@@ -115,7 +117,7 @@ class BeneficiariesSelection extends Component
 
         $secondary = PrimarySecondaryBeneficiaries::where('name', 'Secondary')->first();
         if ($secondary) {
-            $secondary->update([
+            $secondarySave = $secondary->update([
                 'name' => $this->secondary_name ?? $secondary->name,
                 'all_kinder' => (bool) $this->secondary_all_kinder,
                 'all_grade_1' => (bool) $this->secondary_all_grade_1,
@@ -136,10 +138,13 @@ class BeneficiariesSelection extends Component
             $secondary->setAttribute('_4ps', (bool) $this->secondary_4ps);
             $secondary->save();
 
-            $this->dispatch('primary_secondary_saved');
+            if ($secondarySave) {
+                $this->dispatch('primary_secondary_saved');
+            }
         }
-
-        $this->dispatch('beneficiaries-saved', ['message' => 'Beneficiaries saved.']);
+        if ($secondarySave) {
+            $this->dispatch('beneficiaries-saved', ['message' => 'Beneficiaries saved.']);
+        }
     }
 
     public function render()

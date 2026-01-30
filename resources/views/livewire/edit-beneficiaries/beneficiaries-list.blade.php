@@ -1,4 +1,17 @@
 <div>
+	<div class="flex items-center gap-2 mb-4">
+		<input id="beneficiary-search" type="text" placeholder="Search beneficiaries by name, grade or section"
+			wire:model.defer="search"
+			class="mt-1 block w-full max-w-md rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 px-3 py-2" />
+		<button type="button" wire:click="searchBeneficiaries"
+			class="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">
+			Search
+		</button>
+		<button type="button" wire:click="clearSearch"
+			class="inline-flex items-center px-3 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-50 focus:outline-none">
+			Clear
+		</button>
+	</div>
 	@if($setBeneficiaries && $beneficiaries->count())
 		<div class="space-y-3">
 			@foreach($beneficiaries as $beneficiary)
@@ -49,7 +62,7 @@
 			@endforeach
 		</div>
 	@elseif($setBeneficiaries)
-		<div class="text-center text-sm text-gray-500 py-6">No beneficiaries selected.</div>
+		<div class="text-center text-sm text-gray-500 py-6">No beneficiaries found.</div>
 	@endif
 </div>
 

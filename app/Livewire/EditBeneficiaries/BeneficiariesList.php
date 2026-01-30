@@ -13,7 +13,31 @@ class BeneficiariesList extends Component
 {
     public $beneficiaries;
     public $setBeneficiaries = false;
+    public $search = '';
     public function mount() {
+        $this->getBeneficiearies();
+    }
+
+    public function searchBeneficiaries()
+    {
+        $query = NutritionalStatus::query()->where('isBeneficiary', true);
+
+        if ($this->search && trim($this->search) !== '') {
+            $s = '%' . trim($this->search) . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('full_name', 'like', $s)
+                    ->orWhere('grade', 'like', $s)
+                    ->orWhere('section', 'like', $s);
+            });
+        }
+
+        $this->beneficiaries = $query->get();
+        $this->setBeneficiaries = true;
+    }
+
+    public function clearSearch()
+    {
+        $this->search = '';
         $this->getBeneficiearies();
     }
 

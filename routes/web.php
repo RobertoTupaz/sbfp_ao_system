@@ -27,6 +27,10 @@ Route::view('generate_forms', 'generate_forms')
     ->middleware(['auth', 'verified'])
     ->name('generate_forms');
 
+Route::view('track/enrollees', 'trackEnrollees')
+    ->middleware(['auth', 'verified'])
+    ->name('track_enrollees');
+
 Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');

@@ -7,13 +7,23 @@ use Livewire\Component;
 use App\Models\PrimarySecondaryBeneficiaries;
 use App\Models\Beneficiaries;
 use App\Models\NutritionalStatus;
+use App\Models\SwappedPupils;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BeneficiariesList extends Component
 {
     public $beneficiaries;
     public $setBeneficiaries = false;
     public $search = '';
+    // Swap modal state
+    public $showSwapModal = false;
+    public $swapFromId = null;
+    public $swapCandidates = [];
+    public $swapSelectedTo = null;
+    public $swapReason = null;
+    public $swapSearch = '';
     public function mount() {
         $this->getBeneficiearies();
     }
@@ -49,6 +59,98 @@ class BeneficiariesList extends Component
     public function render()
     {
         return view('livewire.edit-beneficiaries.beneficiaries-list');
+    }
+
+    public function openSwapModal($fromPupilId)
+    {
+        $this->swapFromId = $fromPupilId;
+        // load candidates (initially unfiltered)
+        $this->searchSwapCandidates();
+        $this->showSwapModal = true;
+    }
+
+    public function searchSwapCandidates()
+    {
+        $query = NutritionalStatus::query()->where('isBeneficiary', false);
+
+        if ($this->swapSearch && trim($this->swapSearch) !== '') {
+            $s = '%' . trim($this->swapSearch) . '%';
+            $query->where(function ($q) use ($s) {
+                $q->where('full_name', 'like', $s)
+                    ->orWhere('grade', 'like', $s)
+                    ->orWhere('section', 'like', $s);
+            });
+        }
+
+        $this->swapCandidates = $query->limit(500)->get();
+    }
+
+    public function clearSwapSearch()
+    {
+        $this->swapSearch = '';
+        $this->searchSwapCandidates();
+    }
+
+    public function closeSwapModal()
+    {
+        $this->showSwapModal = false;
+        $this->swapFromId = null;
+        $this->swapCandidates = [];
+        $this->swapSelectedTo = null;
+    }
+
+    public function applySwap($toId)
+    {
+        if (!$this->swapFromId || !$toId) {
+            session()->flash('error', 'Invalid selection');
+            return;
+        }
+
+        if ($this->swapFromId == $toId) {
+            session()->flash('error', 'Replacement must be different');
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            $from = NutritionalStatus::where('id', $this->swapFromId)->lockForUpdate()->first();
+            $to = NutritionalStatus::where('id', $toId)->lockForUpdate()->first();
+
+            if (!$from || !$to) {
+                throw new \Exception('Pupil record missing');
+            }
+
+            if (!$from->isBeneficiary) {
+                throw new \Exception('Source pupil is not a beneficiary');
+            }
+
+            if ($to->isBeneficiary) {
+                throw new \Exception('Target pupil is already a beneficiary');
+            }
+
+            $from->isBeneficiary = false;
+            $from->save();
+
+            $to->isBeneficiary = true;
+            $to->save();
+
+            SwappedPupils::create([
+                'old_pupil_id' => $from->id,
+                'new_pupil_id' => $to->id,
+                'reason' => $this->swapReason,
+                'swap_date' => now(),
+            ]);
+
+            DB::commit();
+            session()->flash('success', 'Swap saved');
+            $this->dispatch('swapped-success', ['message' => 'Pupil swap completed successfully']);
+            $this->closeSwapModal();
+            $this->getBeneficiearies();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Swap failed: ' . $e->getMessage());
+            session()->flash('error', 'Swap failed: ' . $e->getMessage());
+        }
     }
 
     #[On('primary_secondary_saved')]

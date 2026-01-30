@@ -1,7 +1,7 @@
 <div class="max-w-5xl mx-auto px-4">
     <h3 class="text-2xl font-semibold text-gray-800 mb-6">Generate Forms</h3>
 
-    <div class="mb-4">
+    {{-- <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">Beneficiaries count</label>
         <div class="flex gap-2 items-center max-w-sm">
             <input type="number" min="0" wire:model.defer="beneficiariesCount"
@@ -10,7 +10,7 @@
                 class="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
         </div>
         <div class="text-sm text-gray-500 mt-2">Set number of beneficiaries for the generated forms</div>
-    </div>
+    </div> --}}
 
     <div wire:click.prevent="generateSnsElem" class="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <a href="#" role="button" aria-label="Generate SNS Elementary Form"

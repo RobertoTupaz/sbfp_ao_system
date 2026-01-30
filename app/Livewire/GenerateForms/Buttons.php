@@ -283,8 +283,9 @@ class Buttons extends Component
 
             // dispatch browser event to trigger download of the generated public file
             $downloadUrl = asset('exel/' . $outFileName);
-            $this->dispatch('form1-ready', $downloadUrl);
-            Log::info('Form1 download URL dispatched: ' . $downloadUrl);
+            // dispatch SNS Elementary specific event
+            $this->dispatch('sns-elem-ready', $downloadUrl);
+            Log::info('SNS Elementary download URL dispatched: ' . $downloadUrl);
         } catch (\Throwable $e) {
             Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
             session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
@@ -380,8 +381,9 @@ class Buttons extends Component
 
             // dispatch browser event to trigger download of the generated public file
             $downloadUrl = asset('exel/' . $outFileName);
-            $this->dispatch('form1-ready', $downloadUrl);
-            Log::info('Form1 download URL dispatched: ' . $downloadUrl);
+            // dispatch SNS High School specific event
+            $this->dispatch('sns-highschool-ready', $downloadUrl);
+            Log::info('SNS HighSchool download URL dispatched: ' . $downloadUrl);
         } catch (\Throwable $e) {
             Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
             session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());

@@ -66,7 +66,6 @@ class EditPupil extends Component
         $this->date_of_weighing = Carbon::parse($pupil->date_of_weighing)->toDateString();
         $this->suffix_name = $pupil->suffix_name;
         $this->date_of_birth = Carbon::parse($pupil->birthday)->toDateString();
-        log::info('DOW: ' . $this->date_of_weighing . ' ' . $this->first_name . ' DOB: ' . $this->date_of_birth . ' DOB :' . $pupil->birthday);
         $this->weight = $pupil->weight;
         $this->height = $pupil->height;
         $this->sex = strtolower($pupil->sex);
@@ -92,12 +91,10 @@ class EditPupil extends Component
         $height    = $this->height;
         $gender    = $this->sex == 'm' ? 'male' : 'female';
 
-        Log::info($ageInMonths . ' ' . $height . ' ' . $gender);
         $hfa = HfaSimplifiedVersion::where('month', $ageInMonths)
             ->where('gender', $gender)
             ->first();
 
-        Log::info($hfa);
         if (!$hfa) {
             return;
         }
@@ -113,7 +110,6 @@ class EditPupil extends Component
         } else {
             $status = 'Tall';
         }
-        Log::info('HFA Status: ' . $status);
         $this->height_for_age = $status;
     }
 

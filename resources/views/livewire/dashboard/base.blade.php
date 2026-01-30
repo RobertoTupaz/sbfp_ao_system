@@ -15,7 +15,7 @@
 		</div>
 	@endif
 
-	<div class="bg-white rounded-xl shadow-md p-6 mb-6">
+	{{-- <div class="bg-white rounded-xl shadow-md p-6 mb-6">
 		<h2 class="text-lg font-semibold mb-4">Select District & Upload Excel</h2>
 		<form wire:submit.prevent="uploadExcel">
 			<div class="mb-4">
@@ -86,5 +86,5 @@
 				</button>
 			@endif
 		</form>
-	</div>
+	</div> --}}
 </div>

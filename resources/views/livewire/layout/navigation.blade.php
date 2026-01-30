@@ -104,6 +104,15 @@ new class extends Component {
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
+                {{ __('Edit Beneficiaries') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('generate_forms')" :active="request()->routeIs('generate_forms')" wire:navigate>
+                {{ __('Generate Forms') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
+                {{ __('Track Enrollees') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->

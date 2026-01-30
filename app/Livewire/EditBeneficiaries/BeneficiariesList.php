@@ -148,7 +148,6 @@ class BeneficiariesList extends Component
             $this->getBeneficiearies();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Swap failed: ' . $e->getMessage());
             session()->flash('error', 'Swap failed: ' . $e->getMessage());
         }
     }
@@ -164,14 +163,12 @@ class BeneficiariesList extends Component
         //setting beneficiaries as a collection with no value
         $beneficiaries = NutritionalStatus::where('grade', '100')->get();
         $remaining = $beneficiariesCount->beneficiaries_count;
-        Log::info($beneficiaries->count());
 
         if ($primary->all_kinder == true) {
             $allKinderBeneficiaries = NutritionalStatus::where('grade', '=', 'k')
                 ->limit($remaining)
                 ->get();
 
-            Log::info($allKinderBeneficiaries->count());
             $beneficiaries = $beneficiaries->merge($allKinderBeneficiaries);
             $remaining = $beneficiariesCount->beneficiaries_count - $allKinderBeneficiaries->count();
         }
@@ -181,7 +178,6 @@ class BeneficiariesList extends Component
                 ->limit($remaining)
                 ->get();
 
-            Log::info($allGrade1->count());
             $beneficiaries = $beneficiaries->merge($allGrade1);
             $remaining = $beneficiariesCount->beneficiaries_count - $allGrade1->count();
         }
@@ -191,7 +187,6 @@ class BeneficiariesList extends Component
                 ->limit($remaining)
                 ->get();
 
-            Log::info($allGrade2->count());
             $beneficiaries = $beneficiaries->merge($allGrade2);
             $remaining = $beneficiariesCount->beneficiaries_count - $allGrade2->count();
         }
@@ -201,7 +196,6 @@ class BeneficiariesList extends Component
                 ->limit($remaining)
                 ->get();
 
-            Log::info($allGrade3->count());
             $beneficiaries = $beneficiaries->merge($allGrade3);
             $remaining = $beneficiariesCount->beneficiaries_count - $allGrade3->count();
         }
@@ -231,7 +225,6 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase1);
-            Log::info($phase1->count());
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
@@ -251,11 +244,8 @@ class BeneficiariesList extends Component
 
             $beneficiaries = $beneficiaries->merge($phase2);
 
-            Log::info($phase2->count());
         }
 
-
-        Log::info($beneficiaries->count());
 
         $setBeneficiariesLocal = $beneficiaries->each(function ($beneficiary) {
             $beneficiary->isBeneficiary = true;

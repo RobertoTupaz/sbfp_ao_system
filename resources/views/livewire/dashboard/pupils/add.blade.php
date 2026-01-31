@@ -50,6 +50,7 @@
                 <select id="grade" wire:model.defer="grade" required
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
                     <option value="">--</option>
+                    <option value="non_graded">Non graded</option>
                     <option value="k">Kinder</option>
                     <option value="1">Grade 1</option>
                     <option value="2">Grade 2</option>

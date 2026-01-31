@@ -1,1 +1,1 @@
-<img src="{{ asset('logo/deped_malaybalay.jpg') }}" {{ $attributes->merge(['alt' => config('app.name', 'Application Logo')]) }} />
+<img src="{{ asset('logo/deped_malaybalay.png') }}" {{ $attributes->merge(['alt' => config('app.name', 'Application Logo'), 'class' => 'w-40 h-20 object-contain']) }} />

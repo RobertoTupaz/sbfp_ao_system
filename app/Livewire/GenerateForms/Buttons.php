@@ -122,7 +122,7 @@ class Buttons extends Component
 
             // save spreadsheet to a new temp file so the original template remains unchanged
             $outFileName = 'Form1_filled_' . time() . '.xlsx';
-            $outFile = public_path('exel/' . $outFileName);
+            $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
 
@@ -130,7 +130,7 @@ class Buttons extends Component
             Log::info($outFileName . ' successfully written with ' . $records->count() . ' records.');
 
             // dispatch browser event to trigger download of the generated public file
-            $downloadUrl = asset('exel/' . $outFileName);
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
             $this->dispatch('form1-ready', $downloadUrl);
             Log::info('Form1 download URL dispatched: ' . $downloadUrl);
         } catch (\Throwable $e) {
@@ -157,12 +157,12 @@ class Buttons extends Component
             $kinderStats = NutritionalStatus::where('grade', 'k')
                 ->selectRaw('
                     COUNT(*) as total,
-                    SUM(sex = "m") as male,
+                    SUM(sex = "m") as kinder_male,
 
-                    SUM(sex = "m" AND nutritional_status = "severely wasted") as Kinder_sw_male,
-                    SUM(sex = "m" AND nutritional_status = "wasted") as Kinder_wasted_male,
-                    SUM(sex = "m" AND nutritional_status = "normal") as Kinder_weight_normal_male,
-                    SUM(sex = "m" AND nutritional_status = "overweight") as Kinder_overweight_male,
+                    SUM(sex = "m" AND nutritional_status = "severely wasted") as kinder_sw_male,
+                    SUM(sex = "m" AND nutritional_status = "wasted") as kinder_wasted_male,
+                    SUM(sex = "m" AND nutritional_status = "normal") as kinder_weight_normal_male,
+                    SUM(sex = "m" AND nutritional_status = "overweight") as kinder_overweight_male,
 
                     SUM(sex = "m" AND height_for_age = "severely stunted") as kinder_ss_male,
                     SUM(sex = "m" AND height_for_age = "stunted") as kinder_stunted_male,
@@ -183,29 +183,89 @@ class Buttons extends Component
                 ')
                 ->first();
 
-            Log::info('Kinder Stats: ' . json_encode($kinderStats));
-
-            $sheet->setCellValueByColumnAndRow(3, 10, $kinderStats->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(6, 10, $kinderStats->Kinder_sw_male ?? 0);
-            $sheet->setCellValueByColumnAndRow(8, 10, $kinderStats->Kinder_wasted_male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 10, $kinderStats->Kinder_weight_normal_male ?? 0);
-            $sheet->setCellValueByColumnAndRow(12, 10, $kinderStats->Kinder_overweight_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(3, 10, $kinderStats->kinder_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(6, 10, $kinderStats->kinder_sw_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(8, 10, $kinderStats->kinder_wasted_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 10, $kinderStats->kinder_weight_normal_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(12, 10, $kinderStats->kinder_overweight_male ?? 0);
             // $sheet->setCellValueByColumnAndRow(14, 10, $kinderStats->Kinder_overweight_male ?? 0);
             $sheet->setCellValueByColumnAndRow(16, 10, $kinderStats->kinder_ss_male ?? 0);
             $sheet->setCellValueByColumnAndRow(18, 10, $kinderStats->kinder_stunted_male ?? 0);
             $sheet->setCellValueByColumnAndRow(20, 10, $kinderStats->kinder_height_normal_male ?? 0);
             $sheet->setCellValueByColumnAndRow(22, 10, $kinderStats->kinder_tall_male ?? 0);
 
-            $sheet->setCellValueByColumnAndRow(3, 11, $kinderStats->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(6, 11, $kinderStats->Kinder_sw_female ?? 0);
-            $sheet->setCellValueByColumnAndRow(8, 11, $kinderStats->Kinder_wasted_female ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 11, $kinderStats->Kinder_weight_normal_female ?? 0);
-            $sheet->setCellValueByColumnAndRow(12, 11, $kinderStats->Kinder_overweight_female ?? 0);
-            // $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->Kinder_overweight_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(3, 11, $kinderStats->kinder_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(6, 11, $kinderStats->kinder_sw_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(8, 11, $kinderStats->kinder_wasted_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 11, $kinderStats->kinder_weight_normal_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(12, 11, $kinderStats->kinder_overweight_female ?? 0);
+            // $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->kinder_overweight_female ?? 0);
             $sheet->setCellValueByColumnAndRow(16, 11, $kinderStats->kinder_ss_female ?? 0);
             $sheet->setCellValueByColumnAndRow(18, 11, $kinderStats->kinder_stunted_female ?? 0);
-            $sheet->setCellValueByColumnAndRow(20, 11, $kinderStats->kinder_height_normal_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(20, 11, $kinderStats->kinder_hfa_normal_female ?? 0);
             $sheet->setCellValueByColumnAndRow(22, 11, $kinderStats->kinder_tall_female ?? 0);
+
+
+
+
+
+
+
+            $nonGradedStats = NutritionalStatus::where('grade', 'non_graded')
+                ->selectRaw('
+                    COUNT(*) as total,
+                    SUM(sex = "m") as non_graded_male,
+
+                    SUM(sex = "m" AND nutritional_status = "severely wasted") as non_graded_sw_male,
+                    SUM(sex = "m" AND nutritional_status = "wasted") as non_graded_wasted_male,
+                    SUM(sex = "m" AND nutritional_status = "normal") as non_graded_weight_normal_male,
+                    SUM(sex = "m" AND nutritional_status = "overweight") as non_graded_overweight_male,
+
+                    SUM(sex = "m" AND height_for_age = "severely stunted") as non_graded_ss_male,
+                    SUM(sex = "m" AND height_for_age = "stunted") as non_graded_stunted_male,
+                    SUM(sex = "m" AND height_for_age = "normal") as non_graded_height_normal_male,
+                    SUM(sex = "m" AND height_for_age = "tall") as non_graded_tall_male,
+
+                    SUM(sex = "f") as non_graded_female,
+
+                    SUM(sex = "f" AND nutritional_status = "severely wasted") as non_graded_sw_female,
+                    SUM(sex = "f" AND nutritional_status = "wasted") as non_graded_wasted_female,
+                    SUM(sex = "f" AND nutritional_status = "normal") as non_graded_weight_normal_female,
+                    SUM(sex = "f" AND nutritional_status = "overweight") as non_graded_overweight_female,
+
+                    SUM(sex = "f" AND height_for_age = "severely stunted") as non_graded_ss_female,
+                    SUM(sex = "f" AND height_for_age = "stunted") as non_graded_stunted_female,
+                    SUM(sex = "f" AND height_for_age = "normal") as non_graded_hfa_normal_female,
+                    SUM(sex = "f" AND height_for_age = "tall") as non_graded_tall_female
+                ')
+                ->first();
+
+            $sheet->setCellValueByColumnAndRow(3, 31, $nonGradedStats->non_graded_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(6, 31, $nonGradedStats->non_graded_sw_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(8, 31, $nonGradedStats->non_graded_wasted_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 31, $nonGradedStats->non_graded_weight_normal_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(12, 31, $nonGradedStats->non_graded_overweight_male ?? 0);
+            // $sheet->setCellValueByColumnAndRow(14, 10, $kinderStats->Kinder_overweight_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(16, 31, $nonGradedStats->non_graded_ss_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(18, 31, $nonGradedStats->non_graded_stunted_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(20, 31, $nonGradedStats->non_graded_height_normal_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(22, 31, $nonGradedStats->non_graded_tall_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(3, 32, $nonGradedStats->non_graded_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(6, 32, $nonGradedStats->non_graded_sw_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(8, 32, $nonGradedStats->non_graded_wasted_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 32, $nonGradedStats->non_graded_weight_normal_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(12, 32, $nonGradedStats->non_graded_overweight_female ?? 0);
+            // $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->kinder_overweight_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(16, 32, $nonGradedStats->non_graded_ss_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(18, 32, $nonGradedStats->non_graded_stunted_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(20, 32, $nonGradedStats->non_graded_hfa_normal_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(22, 32, $nonGradedStats->non_graded_tall_female ?? 0);
+
+
+
+
+
+
 
 
             $gradeStats = [];
@@ -275,17 +335,16 @@ class Buttons extends Component
 
             // save spreadsheet to a new temp file so the original template remains unchanged
             $outFileName = 'SNS_Elem_' . time() . '.xlsx';
-            $outFile = public_path('exel/' . $outFileName);
+            $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
 
             session()->flash('success', 'Form1.xlsx generated for download.');
 
             // dispatch browser event to trigger download of the generated public file
-            $downloadUrl = asset('exel/' . $outFileName);
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
             // dispatch SNS Elementary specific event
             $this->dispatch('sns-elem-ready', $downloadUrl);
-            Log::info('SNS Elementary download URL dispatched: ' . $downloadUrl);
         } catch (\Throwable $e) {
             Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
             session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
@@ -373,17 +432,16 @@ class Buttons extends Component
 
             // save spreadsheet to a new temp file so the original template remains unchanged
             $outFileName = 'SNS_HighSchool_' . time() . '.xlsx';
-            $outFile = public_path('exel/' . $outFileName);
+            $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
 
             session()->flash('success', 'Form1.xlsx generated for download.');
 
             // dispatch browser event to trigger download of the generated public file
-            $downloadUrl = asset('exel/' . $outFileName);
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
             // dispatch SNS High School specific event
             $this->dispatch('sns-highschool-ready', $downloadUrl);
-            Log::info('SNS HighSchool download URL dispatched: ' . $downloadUrl);
         } catch (\Throwable $e) {
             Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
             session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
@@ -397,18 +455,16 @@ class Buttons extends Component
             $json = $records->toJson(JSON_PRETTY_PRINT);
 
             $outFileName = 'nutritional_statuses_' . time() . '.json';
-            $outFile = public_path('exel/' . $outFileName);
+            $outFile = public_path('downloaded_exel/' . $outFileName);
 
             if (file_put_contents($outFile, $json) === false) {
                 throw new \Exception('Failed to write JSON file');
             }
 
             session()->flash('success', 'nutritional_statuses JSON generated for download.');
-            Log::info($outFileName . ' successfully written with ' . $records->count() . ' records.');
 
-            $downloadUrl = asset('exel/' . $outFileName);
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
             $this->dispatch('json-ready', $downloadUrl);
-            Log::info('JSON download URL dispatched: ' . $downloadUrl);
         } catch (\Throwable $e) {
             Log::error('Error writing nutritional_statuses JSON: ' . $e->getMessage());
             session()->flash('error', 'Failed to export JSON: ' . $e->getMessage());
@@ -450,7 +506,6 @@ class Buttons extends Component
 
             $this->reset('uploadJson');
             session()->flash('success', "Imported {$count} nutritional_status records.");
-            Log::info('Imported nutritional_statuses JSON: ' . $count . ' records.');
             $this->dispatch('json-imported', ['count' => $count]);
         } catch (\Throwable $e) {
             Log::error('Error importing nutritional_statuses JSON: ' . $e->getMessage());
@@ -470,7 +525,6 @@ class Buttons extends Component
             $beneficiaries->save();
 
             session()->flash('success', 'Beneficiaries count saved.');
-            Log::info('Beneficiaries count saved: ' . $this->beneficiariesCount);
             $this->dispatch('beneficiaries-saved', ['count' => $this->beneficiariesCount]);
         } catch (\Throwable $e) {
             Log::error('Error saving beneficiaries count: ' . $e->getMessage());

@@ -8,6 +8,11 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                @livewire('dashboard.set-school.setschoolid')
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 @livewire('dashboard.pupils.added-last')
             </div>
         </div>
@@ -16,10 +21,10 @@
                 @livewire('dashboard.pupils.add')
             </div>
         </div>
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
+        {{-- <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 @livewire('dashboard.base')
             </div>
-        </div>
+        </div> --}}
     </div>
 </x-app-layout>

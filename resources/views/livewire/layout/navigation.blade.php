@@ -32,18 +32,27 @@ new class extends Component {
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
-                        wire:navigate>
-                        {{ __('Edit Beneficiaries') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('generate_forms')" :active="request()->routeIs('generate_forms')"
-                        wire:navigate>
-                        {{ __('Generate Forms') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')"
-                        wire:navigate>
-                        {{ __('Track Enrollees') }}
-                    </x-nav-link>
+                    @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                        <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
+                            wire:navigate>
+                            {{ __('Edit Beneficiaries') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('generate_forms')" :active="request()->routeIs('generate_forms')"
+                            wire:navigate>
+                            {{ __('Generate Forms') }}
+                        </x-nav-link>
+                    @endif
+                    @if(auth()->check() && !in_array(auth()->user()->role, ['user','users','ao']))
+                        <x-nav-link :href="route('generate_reports')" :active="request()->routeIs('generate_reports')" wire:navigate>
+                            {{ __('Generate Reports') }}
+                        </x-nav-link>
+                    @endif
+                    @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                        <x-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')"
+                            wire:navigate>
+                            {{ __('Track Enrollees') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -100,19 +109,28 @@ new class extends Component {
 
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
+            <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
-                {{ __('Edit Beneficiaries') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('generate_forms')" :active="request()->routeIs('generate_forms')" wire:navigate>
-                {{ __('Generate Forms') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
-                {{ __('Track Enrollees') }}
-            </x-responsive-nav-link>
+                @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                    <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
+                        {{ __('Edit Beneficiaries') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('generate_forms')" :active="request()->routeIs('generate_forms')" wire:navigate>
+                        {{ __('Generate Forms') }}
+                    </x-responsive-nav-link>
+                @endif
+                @if(auth()->check() && !in_array(auth()->user()->role, ['user','users','ao']))
+                    <x-responsive-nav-link :href="route('generate_reports')" :active="request()->routeIs('generate_reports')" wire:navigate>
+                        {{ __('Generate Reports') }}
+                    </x-responsive-nav-link>
+                @endif
+                @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                    <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
+                        {{ __('Track Enrollees') }}
+                    </x-responsive-nav-link>
+                @endif
         </div>
 
         <!-- Responsive Settings Options -->

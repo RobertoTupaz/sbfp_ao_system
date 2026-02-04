@@ -24,7 +24,8 @@ class BeneficiariesList extends Component
     public $swapSelectedTo = null;
     public $swapReason = null;
     public $swapSearch = '';
-    public function mount() {
+    public function mount()
+    {
         $this->getBeneficiearies();
     }
 
@@ -51,7 +52,8 @@ class BeneficiariesList extends Component
         $this->getBeneficiearies();
     }
 
-    public function getBeneficiearies() {
+    public function getBeneficiearies()
+    {
         $this->beneficiaries = NutritionalStatus::where('isBeneficiary', "=", true)->get();
         $this->setBeneficiaries = true;
     }
@@ -243,9 +245,43 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase2);
-
         }
 
+        if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
+
+            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
+
+            $phase3 = NutritionalStatus::whereIn('nutritional_status', ['normal'])
+                ->whereNotIn('id', $beneficiaries->pluck('id'))
+                ->limit($remaining)
+                ->get();
+
+            $beneficiaries = $beneficiaries->merge($phase3);
+        }
+
+        if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
+
+            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
+
+            $phase4 = NutritionalStatus::whereIn('height_for_age', ['normal', 'tall'])
+                ->whereNotIn('id', $beneficiaries->pluck('id'))
+                ->limit($remaining)
+                ->get();
+
+            $beneficiaries = $beneficiaries->merge($phase4);
+        }
+
+        if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
+
+            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
+
+            $phase5 = NutritionalStatus::whereIn('nutritional_status', ['overweight'])
+                ->whereNotIn('id', $beneficiaries->pluck('id'))
+                ->limit($remaining)
+                ->get();
+
+            $beneficiaries = $beneficiaries->merge($phase5);
+        }
 
         $setBeneficiariesLocal = $beneficiaries->each(function ($beneficiary) {
             $beneficiary->isBeneficiary = true;

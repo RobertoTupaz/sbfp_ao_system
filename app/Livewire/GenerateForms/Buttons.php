@@ -7,8 +7,6 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\NutritionalStatus;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Maatwebsite\Excel\Facades\Excel;
 
 class Buttons extends Component
 {
@@ -40,6 +38,9 @@ class Buttons extends Component
             // load the existing spreadsheet
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
             $sheet = $spreadsheet->getActiveSheet();
+
+            $sheet->setCellValueByColumnAndRow(1, 8, "Name of School / School District : " . (auth()->user()->school->school_name ?? '') . " - " . (auth()->user()->school->district ?? ''));
+            $sheet->setCellValueByColumnAndRow(1, 9, "School  ID Number: " . auth()->user()->school->school_id ?? '');
 
             // starting row in the template
             $startRow = 13;
@@ -95,7 +96,7 @@ class Buttons extends Component
                 ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
 
             $sheet->mergeCells("M{$footerRow}:N{$footerRow}");
-            $sheet->setCellValue("M{$footerRow}", 'Prepared by :');
+            $sheet->setCellValue("M{$footerRow}", 'Approved by :');
             $sheet->getStyle("M{$footerRow}:N{$footerRow}")
                 ->getAlignment()
                 ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
@@ -152,6 +153,9 @@ class Buttons extends Component
             // load the existing spreadsheet
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
             $sheet = $spreadsheet->getActiveSheet();
+
+            $sheet->setCellValueByColumnAndRow(1, 4, "NUTRITIONAL STATUS REPORT OF " . strtoupper(auth()->user()->school->school_name) ?? '');
+            $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2025 - 2026");
 
             // fetch records from database
             $kinderStats = NutritionalStatus::where('grade', 'k')
@@ -364,6 +368,9 @@ class Buttons extends Component
             // load the existing spreadsheet
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
             $sheet = $spreadsheet->getActiveSheet();
+
+            $sheet->setCellValueByColumnAndRow(1, 4, "NUTRITIONAL STATUS REPORT OF " . strtoupper(auth()->user()->school->school_name) ?? '');
+            $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2025 - 2026");
 
             $gradeStats = [];
             // starting row in the template

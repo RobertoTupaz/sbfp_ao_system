@@ -16,4 +16,9 @@ class AllSchool extends Model
     {
         return $this->hasMany(User::class, 'school_id', 'school_id');
     }
+
+    public function form1s()
+    {
+        return $this->hasMany(Form_1::class, 'school_id', 'school_id');
+    }
 }

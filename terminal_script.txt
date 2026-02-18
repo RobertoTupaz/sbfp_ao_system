@@ -1,0 +1,10 @@
+# project root
+php -v
+composer --version
+php artisan --version
+node -v
+npm -v
+
+# dependency lists
+composer show --no-dev --direct
+npm list --depth=0

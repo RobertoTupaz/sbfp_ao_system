@@ -30,7 +30,8 @@ class Setschoolid extends Component
         }
 
         $exists = AllSchool::where('school_id', $this->school_id)->exists();
-        if (! $exists) {
+        
+        if (!$exists) {
             $this->dispatch('swal:error', [
                 'message' => 'School ID not found in records. Please verify and try again.'
             ]);

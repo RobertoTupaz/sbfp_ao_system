@@ -27,7 +27,7 @@
 					class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
 					<option value="">-- Select District --</option>
 					@foreach($districts as $district)
-					<option value="{{ $district->id }}">{{ $district->name }}</option>
+						<option value="{{ $district->id }}">{{ $district->name }}</option>
 					@endforeach
 				</select>
 			</div>
@@ -39,7 +39,7 @@
 					class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
 					<option value="">-- Select School --</option>
 					@foreach($schools as $school)
-					<option value="{{ $school->id }}">{{ $school->name }}</option>
+						<option value="{{ $school->id }}">{{ $school->name }}</option>
 					@endforeach
 				</select>
 			</div>

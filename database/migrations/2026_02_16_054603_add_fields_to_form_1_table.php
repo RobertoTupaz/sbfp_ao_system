@@ -9,22 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function _up(): void
     {
         Schema::table('form_1', function (Blueprint $table) {
-            $table->unsignedBigInteger('school_id')->after('id')->nullable();
-            $table->foreign('school_id')->references('id')->on('school')->onDelete('cascade');
+            $table->foreignId('states')->constrained()->onDelete('cascade');
         });
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function _down(): void
     {
         Schema::table('form_1', function (Blueprint $table) {
-            $table->dropForeign(['school_id']);
-            $table->dropColumn('school_id');
+            $table->dropForeign(['states']);
         });
     }
 };

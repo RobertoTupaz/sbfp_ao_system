@@ -11,12 +11,12 @@
             <label class="inline-flex items-center">
                 <input wire:model="uploads.{{ $school['school_id'] }}" type="file" id="upload-{{ $school['school_id'] }}" name="form1" class="hidden" onchange="focalHandleUploadChange(this, 'save-{{ $school['school_id'] }}')" />
 
-                @if(isset($schoolsWithData[$school['school_id']]))
-                    <button type="button" wire:click="$emit('openBaseline', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-blue-600 text-white text-xs rounded">Baseline</button>
-                    <button type="button" wire:click="$emit('openMidline', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-purple-600 text-white text-xs rounded">Midline</button>
-                    <button type="button" wire:click="$emit('openForm7', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-red-600 text-white text-xs rounded">Form7</button>
-                    <button type="button" wire:click="$emit('openForm2', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-yellow-600 text-white text-xs rounded">Form 2</button>
-                @endif
+                {{-- @if(isset($schoolsWithData[$school['school_id']]))
+                    <button type="button" wire:click="logClicked('baseline', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-blue-600 text-white text-xs rounded">Baseline</button>
+                    <button type="button" wire:click="logClicked('midline', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-purple-600 text-white text-xs rounded">Midline</button>
+                    <button type="button" wire:click="logClicked('form7', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-red-600 text-white text-xs rounded">Form7</button>
+                    <button type="button" wire:click="logClicked('form2', {{ $school['school_id'] }})" class="px-3 py-1 mx-1 bg-yellow-600 text-white text-xs rounded">Form 2</button>
+                @endif --}}
 
                 <button type="button" onclick="document.getElementById('upload-{{ $school['school_id'] }}').click()" class="px-3 py-1 bg-indigo-600 text-white text-xs rounded">Upload Form 1</button>
             </label>

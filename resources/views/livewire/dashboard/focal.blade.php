@@ -49,11 +49,11 @@
 			<p class="mt-4 text-sm text-gray-600">No schools found.</p>
 		</div>
 	@else
-		<div class="grid gap-4 grid-cols-1 sm:grid-cols-1 lg:grid-cols-1">
+		<div class="grid gap-4 grid-cols-1 sm:grid-cols-1 lg:grid-cols-2">
 			@foreach($schoolsByDistrict as $district => $schools)
 				<div class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition">
 					<div class="flex items-center justify-between mb-3">
-						<h3 class="text-lg font-medium text-gray-800">{{ $district ?: 'Unassigned District' }}</h3>
+						<h3 class="text-lg font-medium text-gray-800">District {{ $district ?: 'Unassigned District' }}</h3>
 						<span
 							class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">{{ count($schools) }}</span>
 					</div>
@@ -132,6 +132,24 @@
 				text: (school ? ('School ID ' + school + ': ') : '') + msg,
 				showConfirmButton: true
 			});
+		});
+
+		// trigger download when baseline file is ready
+		window.addEventListener('focal-baseline-ready', function (e) {
+			try {
+				var url = e && e.detail && e.detail.url ? e.detail.url : null;
+				// Livewire v3 dispatch sends named params under detail by default
+				if (!url && e && e.detail) url = e.detail; // fallback
+				if (!url) return;
+				var a = document.createElement('a');
+				a.href = url;
+				a.download = '';
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+			} catch (err) {
+				console.error('Download error', err);
+			}
 		});
 	}
 </script>

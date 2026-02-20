@@ -7,6 +7,7 @@ use Livewire\Component;
 use App\Models\NutritionalStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class Add extends Component
 {
@@ -108,12 +109,21 @@ class Add extends Component
         ]);
 
         // notify the front-end so the UI can show lastly added pupil
-        $this->dispatch('pupil-saved', $record->full_name);
+        //$this->dispatch('pupil-saved', $record->full_name);
+        $this->notif();
 
-        session()->flash('success', 'Pupil saved');
+        //session()->flash('success', 'Pupil saved');
+        $this->notif();
         $this->reset(['first_name', 'last_name', 'suffix_name', 'date_of_birth', 'date_of_weighing', 'weight', 'height', 'sex', 'age_years_months', 'age_years', 'age_months', 'bmi', 'nutritional_status', 'height_for_age', 'fourps', 'ip', 'pardo', 'dewormed', 'parent_consent_milk', 'sbfp_previous_beneficiary']);
         // reset date_of_weighing to today
         $this->date_of_weighing = date('Y-m-d');
+    }
+
+    public function notif()
+    {
+        LivewireAlert::title('Changes saved!')
+            ->success()
+            ->show();
     }
 
     public function getHFA()

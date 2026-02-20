@@ -4,6 +4,7 @@ namespace App\Livewire\Dashboard\SetSchool;
 
 use Livewire\Component;
 use App\Models\AllSchool;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class Setschoolid extends Component
 {
@@ -30,7 +31,7 @@ class Setschoolid extends Component
         }
 
         $exists = AllSchool::where('school_id', $this->school_id)->exists();
-        
+
         if (!$exists) {
             $this->dispatch('swal:error', [
                 'message' => 'School ID not found in records. Please verify and try again.'
@@ -41,11 +42,19 @@ class Setschoolid extends Component
         $user->school_id = $this->school_id;
         $user->save();
 
-        $this->dispatch('swal:success', [
-            'message' => 'School ID saved.'
-        ]);
+        // $this->dispatch('swal:success', [
+        //     'message' => 'School ID saved.'
+        // ]);
+        $this->notif();
 
         session()->flash('message', 'School ID saved.');
+    }
+
+    public function notif()
+    {
+        LivewireAlert::title('Changes saved!')
+            ->success()
+            ->show();
     }
 
     public function render()

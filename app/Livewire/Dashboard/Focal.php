@@ -11,6 +11,7 @@ use Livewire\WithFileUploads;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class Focal extends Component
 {
@@ -52,7 +53,16 @@ class Focal extends Component
             'focal_selected_year' => $this->selectedYear,
         ]);
 
-        $this->dispatch('focal-selection-saved', ['state' => $this->selectedStateGlobal, 'year' => $this->selectedYear]);
+        //$this->dispatch('focal-selection-saved', ['state' => $this->selectedStateGlobal, 'year' => $this->selectedYear]);
+    
+        $this->notif();
+    }
+
+    public function notif()
+    {
+        LivewireAlert::title('Changes saved!')
+            ->success()
+            ->show();
     }
 
     public function updatedSearch()
@@ -102,7 +112,10 @@ class Focal extends Component
 
                 $allEmpty = true;
                 foreach ($cells as $c) {
-                    if ($c !== null && $c !== '') { $allEmpty = false; break; }
+                    if ($c !== null && $c !== '') {
+                        $allEmpty = false;
+                        break;
+                    }
                 }
                 if ($allEmpty) {
                     continue;
@@ -175,7 +188,8 @@ class Focal extends Component
             // reset the upload for this school
             $this->uploads[$schoolId] = null;
 
-            $this->dispatch('focal-upload-saved', ['school' => $schoolId]);
+            //$this->dispatch('focal-upload-saved', ['school' => $schoolId]);
+            $this->notif();
             $this->loadSchools();
         } catch (\Throwable $e) {
             Log::error('Error processing uploaded Form1 for school ' . $schoolId . ': ' . $e->getMessage());
@@ -191,8 +205,8 @@ class Focal extends Component
             $term = "%{$this->search}%";
             $query->where(function ($q) use ($term) {
                 $q->where('school_name', 'like', $term)
-                  ->orWhere('district', 'like', $term)
-                  ->orWhere('school_id', 'like', $term);
+                    ->orWhere('district', 'like', $term)
+                    ->orWhere('school_id', 'like', $term);
             });
         }
 
@@ -232,6 +246,100 @@ class Focal extends Component
         $idsWith = $q->distinct()->pluck('school_id')->toArray();
         $this->schoolsWithData = array_flip($idsWith);
     }
+
+    public function logClicked($action, $schoolId)
+    {
+        $norm = strtolower(str_replace('open', '', $action));
+        if ($norm === 'baseline') {
+            $this->generateBaseline($schoolId);
+        } else if ($norm === 'midline') {
+            $this->generateMidline($schoolId);
+        } else if ($norm === 'form7') {
+            $this->generateForm7($schoolId);
+        } else if ($norm === 'form2') {
+            $this->generateForm2($schoolId);
+        }
+    }
+
+    public function generateBaseline($schoolId)
+    {
+        $template = public_path('exel/FormulatedExel.xlsx');
+        if (!file_exists($template)) {
+            session()->flash('error', 'FormulatedExel.xlsx not found in public/exel');
+            Log::error('FormulatedExel write failed - template not found: ' . $template);
+            return;
+        }
+
+        try {
+            $spreadsheet = IOFactory::load($template);
+
+            // select the worksheet by name
+            $sheet = $spreadsheet->getSheetByName('F1_B');
+            if (!$sheet) {
+                session()->flash('error', 'Template does not contain a sheet named F1_B');
+                Log::error('Sheet F1_B not found in template: ' . $template);
+                return;
+            }
+
+            // write a small marker and the school name into the sheet (example)
+            $school = AllSchool::where('school_id', $schoolId)->first();
+            $schoolName = $school ? $school->school_name : 'Unknown school';
+            $sheet->setCellValue('A1', 'Baseline generated for school: ' . $schoolId);
+            $sheet->setCellValue('A2', $schoolName);
+
+            // fetch Form_1 rows for this school + selected state/year from session
+            $year = session('focal_selected_year', '');
+            $state = session('focal_selected_state', '');
+
+            $query = Form_1::where('school_id', $schoolId);
+            if ($state !== '') {
+                $query->where('survey_state', $state);
+            }
+            if (!empty($year)) {
+                $query->where('school_year', $year);
+            }
+            $records = $query->orderBy('name')->get();
+
+            // starting row in the template
+            $startRow = 4;
+            foreach ($records as $index => $rec) {
+                $row = $startRow + $index;
+
+                $sheet->setCellValueByColumnAndRow(1, $row, $index + 1); // No.
+                $sheet->setCellValueByColumnAndRow(2, $row, strtolower($rec->name ?? ''));
+                $sheet->setCellValueByColumnAndRow(3, $row, strtolower($rec->sex ?? 'm') == 'male' ? 'm' : 'f');
+                $sheet->setCellValueByColumnAndRow(4, $row, strtolower($rec->grade ?? ''));
+                $sheet->setCellValueByColumnAndRow(11, $row, strtolower($rec->bmi_a ?? ''));
+                $sheet->setCellValueByColumnAndRow(12, $row, strtolower($rec->hfa ?? ''));
+                $sheet->setCellValueByColumnAndRow(13, $row, ($rec->parent_consent_milk ? 'yes' : 'no'));
+                $sheet->setCellValueByColumnAndRow(14, $row, ($rec->in_4ps ? 'yes' : 'no'));
+                $sheet->setCellValueByColumnAndRow(15, $row, ($rec->ip ? 'yes' : 'no'));
+                $sheet->setCellValueByColumnAndRow(16, $row, ($rec->pardo ? 'yes' : 'no'));
+                $sheet->setCellValueByColumnAndRow(17, $row, ($rec->dewormed ? 'yes' : 'no'));
+                $sheet->setCellValueByColumnAndRow(18, $row, ($rec->beneficiary_of_sbfp_in_previous_year ? 'yes' : 'no'));
+            }
+
+            // save spreadsheet to a new temp file so the original template remains unchanged
+            $outFileName = 'Forms_' . time() . '.xlsx';
+            $outFile = public_path('downloaded_exel/' . $outFileName);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->setPreCalculateFormulas(false);
+            $writer->save($outFile);
+
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
+            $this->dispatch('focal-baseline-ready', $downloadUrl);
+        } catch (\Throwable $e) {
+            Log::error('Error generating baseline for school ' . $schoolId . ': ' . $e->getMessage());
+            session()->flash('error', 'Error generating baseline');
+            $this->dispatch('focal-baseline-error', ['school' => $schoolId, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function generateMidline($schoolId) {}
+
+    public function generateForm7($schoolId) {}
+
+    public function generateForm2($schoolId) {}
 
     public function render()
     {

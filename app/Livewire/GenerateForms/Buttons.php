@@ -167,6 +167,7 @@ class Buttons extends Component
                     SUM(sex = "m" AND nutritional_status = "wasted") as kinder_wasted_male,
                     SUM(sex = "m" AND nutritional_status = "normal") as kinder_weight_normal_male,
                     SUM(sex = "m" AND nutritional_status = "overweight") as kinder_overweight_male,
+                    SUM(sex = "m" AND nutritional_status = "obese") as kinder_obese_male,
 
                     SUM(sex = "m" AND height_for_age = "severely stunted") as kinder_ss_male,
                     SUM(sex = "m" AND height_for_age = "stunted") as kinder_stunted_male,
@@ -179,6 +180,7 @@ class Buttons extends Component
                     SUM(sex = "f" AND nutritional_status = "wasted") as kinder_wasted_female,
                     SUM(sex = "f" AND nutritional_status = "normal") as kinder_weight_normal_female,
                     SUM(sex = "f" AND nutritional_status = "overweight") as kinder_overweight_female,
+                    SUM(sex = "f" AND nutritional_status = "obese") as kinder_obese_female,
 
                     SUM(sex = "f" AND height_for_age = "severely stunted") as kinder_ss_female,
                     SUM(sex = "f" AND height_for_age = "stunted") as kinder_stunted_female,
@@ -192,7 +194,7 @@ class Buttons extends Component
             $sheet->setCellValueByColumnAndRow(8, 10, $kinderStats->kinder_wasted_male ?? 0);
             $sheet->setCellValueByColumnAndRow(10, 10, $kinderStats->kinder_weight_normal_male ?? 0);
             $sheet->setCellValueByColumnAndRow(12, 10, $kinderStats->kinder_overweight_male ?? 0);
-            // $sheet->setCellValueByColumnAndRow(14, 10, $kinderStats->Kinder_overweight_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(14, 10, $kinderStats->kinder_obese_male ?? 0);
             $sheet->setCellValueByColumnAndRow(16, 10, $kinderStats->kinder_ss_male ?? 0);
             $sheet->setCellValueByColumnAndRow(18, 10, $kinderStats->kinder_stunted_male ?? 0);
             $sheet->setCellValueByColumnAndRow(20, 10, $kinderStats->kinder_height_normal_male ?? 0);
@@ -203,16 +205,11 @@ class Buttons extends Component
             $sheet->setCellValueByColumnAndRow(8, 11, $kinderStats->kinder_wasted_female ?? 0);
             $sheet->setCellValueByColumnAndRow(10, 11, $kinderStats->kinder_weight_normal_female ?? 0);
             $sheet->setCellValueByColumnAndRow(12, 11, $kinderStats->kinder_overweight_female ?? 0);
-            // $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->kinder_overweight_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->kinder_obese_female ?? 0);
             $sheet->setCellValueByColumnAndRow(16, 11, $kinderStats->kinder_ss_female ?? 0);
             $sheet->setCellValueByColumnAndRow(18, 11, $kinderStats->kinder_stunted_female ?? 0);
             $sheet->setCellValueByColumnAndRow(20, 11, $kinderStats->kinder_hfa_normal_female ?? 0);
             $sheet->setCellValueByColumnAndRow(22, 11, $kinderStats->kinder_tall_female ?? 0);
-
-
-
-
-
 
 
             $nonGradedStats = NutritionalStatus::where('grade', 'non_graded')
@@ -224,6 +221,7 @@ class Buttons extends Component
                     SUM(sex = "m" AND nutritional_status = "wasted") as non_graded_wasted_male,
                     SUM(sex = "m" AND nutritional_status = "normal") as non_graded_weight_normal_male,
                     SUM(sex = "m" AND nutritional_status = "overweight") as non_graded_overweight_male,
+                    SUM(sex = "m" AND nutritional_status = "obese") as non_graded_obese_male,
 
                     SUM(sex = "m" AND height_for_age = "severely stunted") as non_graded_ss_male,
                     SUM(sex = "m" AND height_for_age = "stunted") as non_graded_stunted_male,
@@ -236,6 +234,7 @@ class Buttons extends Component
                     SUM(sex = "f" AND nutritional_status = "wasted") as non_graded_wasted_female,
                     SUM(sex = "f" AND nutritional_status = "normal") as non_graded_weight_normal_female,
                     SUM(sex = "f" AND nutritional_status = "overweight") as non_graded_overweight_female,
+                    SUM(sex = "f" AND nutritional_status = "obese") as non_graded_obese_female,
 
                     SUM(sex = "f" AND height_for_age = "severely stunted") as non_graded_ss_female,
                     SUM(sex = "f" AND height_for_age = "stunted") as non_graded_stunted_female,
@@ -249,7 +248,7 @@ class Buttons extends Component
             $sheet->setCellValueByColumnAndRow(8, 31, $nonGradedStats->non_graded_wasted_male ?? 0);
             $sheet->setCellValueByColumnAndRow(10, 31, $nonGradedStats->non_graded_weight_normal_male ?? 0);
             $sheet->setCellValueByColumnAndRow(12, 31, $nonGradedStats->non_graded_overweight_male ?? 0);
-            // $sheet->setCellValueByColumnAndRow(14, 10, $kinderStats->Kinder_overweight_male ?? 0);
+            $sheet->setCellValueByColumnAndRow(14, 31, $nonGradedStats->non_graded_obese_male ?? 0);
             $sheet->setCellValueByColumnAndRow(16, 31, $nonGradedStats->non_graded_ss_male ?? 0);
             $sheet->setCellValueByColumnAndRow(18, 31, $nonGradedStats->non_graded_stunted_male ?? 0);
             $sheet->setCellValueByColumnAndRow(20, 31, $nonGradedStats->non_graded_height_normal_male ?? 0);
@@ -259,7 +258,7 @@ class Buttons extends Component
             $sheet->setCellValueByColumnAndRow(8, 32, $nonGradedStats->non_graded_wasted_female ?? 0);
             $sheet->setCellValueByColumnAndRow(10, 32, $nonGradedStats->non_graded_weight_normal_female ?? 0);
             $sheet->setCellValueByColumnAndRow(12, 32, $nonGradedStats->non_graded_overweight_female ?? 0);
-            // $sheet->setCellValueByColumnAndRow(14, 11, $kinderStats->kinder_overweight_female ?? 0);
+            $sheet->setCellValueByColumnAndRow(14, 32, $nonGradedStats->non_graded_obese_female ?? 0);
             $sheet->setCellValueByColumnAndRow(16, 32, $nonGradedStats->non_graded_ss_female ?? 0);
             $sheet->setCellValueByColumnAndRow(18, 32, $nonGradedStats->non_graded_stunted_female ?? 0);
             $sheet->setCellValueByColumnAndRow(20, 32, $nonGradedStats->non_graded_hfa_normal_female ?? 0);
@@ -288,6 +287,7 @@ class Buttons extends Component
                         SUM(sex = "m" AND nutritional_status = "wasted") as wasted_male,
                         SUM(sex = "m" AND nutritional_status = "normal") as weight_normal_male,
                         SUM(sex = "m" AND nutritional_status = "overweight") as overweight_male,
+                        SUM(sex = "m" AND nutritional_status = "obese") as obese_male,
 
                         SUM(sex = "m" AND height_for_age = "severely stunted") as ss_male,
                         SUM(sex = "m" AND height_for_age = "stunted") as stunted_male,
@@ -299,6 +299,7 @@ class Buttons extends Component
                         SUM(sex = "f" AND nutritional_status = "wasted") as wasted_female,
                         SUM(sex = "f" AND nutritional_status = "normal") as weight_normal_female,
                         SUM(sex = "f" AND nutritional_status = "overweight") as overweight_female,
+                        SUM(sex = "f" AND nutritional_status = "obese") as obese_female,
 
                         SUM(sex = "f" AND height_for_age = "severely stunted") as ss_female,
                         SUM(sex = "f" AND height_for_age = "stunted") as stunted_female,
@@ -314,7 +315,7 @@ class Buttons extends Component
                 $sheet->setCellValueByColumnAndRow(8, $startRow, $gradeStat->wasted_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(10, $startRow, $gradeStat->weight_normal_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(12, $startRow, $gradeStat->overweight_male ?? 0);
-                // $sheet->setCellValueByColumnAndRow(14, $startRow, $gradeStat->overweight_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(14, $startRow, $gradeStat->obese_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(16, $startRow, $gradeStat->ss_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(18, $startRow, $gradeStat->stunted_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(20, $startRow, $gradeStat->hfa_normal_male ?? 0);
@@ -327,7 +328,7 @@ class Buttons extends Component
                 $sheet->setCellValueByColumnAndRow(8, ($startRow), $gradeStat->wasted_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(10, ($startRow), $gradeStat->weight_normal_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(12, ($startRow), $gradeStat->overweight_female ?? 0);
-                // $sheet->setCellValueByColumnAndRow(14, ($startRow), $gradeStat->overweight_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(14, ($startRow), $gradeStat->obese_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(16, ($startRow), $gradeStat->ss_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(18, ($startRow), $gradeStat->stunted_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(20, ($startRow), $gradeStat->hfa_normal_female ?? 0);
@@ -388,6 +389,7 @@ class Buttons extends Component
                         SUM(sex = "m" AND nutritional_status = "wasted") as wasted_male,
                         SUM(sex = "m" AND nutritional_status = "normal") as weight_normal_male,
                         SUM(sex = "m" AND nutritional_status = "overweight") as overweight_male,
+                        SUM(sex = "m" AND nutritional_status = "obese") as obese_male,
 
                         SUM(sex = "m" AND height_for_age = "severely stunted") as ss_male,
                         SUM(sex = "m" AND height_for_age = "stunted") as stunted_male,
@@ -399,6 +401,7 @@ class Buttons extends Component
                         SUM(sex = "f" AND nutritional_status = "wasted") as wasted_female,
                         SUM(sex = "f" AND nutritional_status = "normal") as weight_normal_female,
                         SUM(sex = "f" AND nutritional_status = "overweight") as overweight_female,
+                        SUM(sex = "f" AND nutritional_status = "obese") as obese_female,
 
                         SUM(sex = "f" AND height_for_age = "severely stunted") as ss_female,
                         SUM(sex = "f" AND height_for_age = "stunted") as stunted_female,
@@ -414,7 +417,7 @@ class Buttons extends Component
                 $sheet->setCellValueByColumnAndRow(8, $startRow, $gradeStat->wasted_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(10, $startRow, $gradeStat->weight_normal_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(12, $startRow, $gradeStat->overweight_male ?? 0);
-                // $sheet->setCellValueByColumnAndRow(14, $startRow, $gradeStat->overweight_male ?? 0);
+                $sheet->setCellValueByColumnAndRow(14, $startRow, $gradeStat->obese_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(16, $startRow, $gradeStat->ss_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(18, $startRow, $gradeStat->stunted_male ?? 0);
                 $sheet->setCellValueByColumnAndRow(20, $startRow, $gradeStat->hfa_normal_male ?? 0);
@@ -427,7 +430,7 @@ class Buttons extends Component
                 $sheet->setCellValueByColumnAndRow(8, ($startRow), $gradeStat->wasted_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(10, ($startRow), $gradeStat->weight_normal_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(12, ($startRow), $gradeStat->overweight_female ?? 0);
-                // $sheet->setCellValueByColumnAndRow(14, ($startRow), $gradeStat->overweight_female ?? 0);
+                $sheet->setCellValueByColumnAndRow(14, ($startRow), $gradeStat->obese_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(16, ($startRow), $gradeStat->ss_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(18, ($startRow), $gradeStat->stunted_female ?? 0);
                 $sheet->setCellValueByColumnAndRow(20, ($startRow), $gradeStat->hfa_normal_female ?? 0);

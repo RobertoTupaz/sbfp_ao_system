@@ -42,7 +42,7 @@
                                                             <li class="flex justify-between items-start space-x-3">
                                                                 <div class="flex-1">
                                                                     <div class="font-medium">{{ $stu['full_name'] ?? ($stu['last_name'].' '.($stu['first_name'] ?? '')) }}</div>
-                                                                    <div class="text-sm text-gray-600">Section: {{ $stu['section'] ?? '—' }} &middot; Height: {{ $stu['height'] ?? '—' }}m &middot; Weight: {{ $stu['weight'] ?? '—' }}kg</div>
+                                                                    <div class="text-sm text-gray-600">Section: {{ $stu['section'] ?? '—' }} &middot; Height: {{ $stu['height'] ?? '—' }}m &middot; Weight: {{ $stu['weight'] ?? '—' }}kg &middot; Nutritional: {{ $stu['nutritional_status'] ?? '—' }} &middot; HFA: {{ $stu['height_for_age'] ?? '—' }}</div>
                                                                 </div>
                                                                 <div class="flex-shrink-0">
                                                                     @if($editingStudent === $stu['id'])

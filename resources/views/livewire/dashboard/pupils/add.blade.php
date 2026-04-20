@@ -5,7 +5,6 @@
 
     <div class="flex items-center justify-between mb-4 gap-4">
         <h3 class="text-lg font-semibold">Add Pupil</h3>
-
         <div class="flex flex-col items-center items-end gap-2">
             <label class="text-sm font-medium text-gray-700">Date of weighing</label>
             <input type="date" id="date_of_weighing" wire:model.defer="date_of_weighing"
@@ -16,7 +15,41 @@
         </div>
     </div>
 
-    <form wire:submit.prevent="savePupil">
+    <div class="mb-4">
+        <label class="text-sm font-medium text-gray-700">Search by last name</label>
+        <div class="flex items-center gap-2 mt-1">
+            <input type="text" wire:model.debounce.500ms="search_lastname" wire:input="searchLastname"
+                placeholder="Type last name to search..."
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+            <button type="button" wire:click="searchLastname" class="ml-2 px-3 py-1 bg-blue-600 text-white rounded">Search</button>
+            {{-- <button type="button" wire:click="createNew"
+                class="ml-2 px-3 py-1 bg-green-600 text-white rounded">Add new pupil</button> --}}
+        </div>
+        <hr class="my-2">
+        @if($search_lastname)
+            @if($searchResults && count($searchResults))
+                <div class="mt-2 max-h-48 overflow-auto border rounded p-2 bg-gray-50">
+                    @foreach($searchResults as $r)
+                        <div class="flex items-center justify-between py-1">
+                            <div class="text-sm">{{ $r->full_name }} <span class="text-xs text-gray-500">@if($r->grade) {{ $r->grade }}@endif @if($r->section) - {{ $r->section }}@endif</span></div>
+                            <div class="flex gap-2">
+                                <button type="button" wire:click="selectExisting({{ $r->id }})" class="text-sm text-blue-600">Edit</button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="mt-2 text-sm text-gray-600">If no pupils found. <button type="button" wire:click="createNew" class="underline text-blue-600">Add new pupil</button></div>
+            @endif
+        @endif
+    </div>
+
+    @if($editingId)
+        <div class="mb-4 text-sm text-yellow-700">Editing existing pupil — <button type="button" wire:click="hideForm" class="underline text-blue-600">Cancel</button></div>
+    @endif
+
+    @if($showForm)
+    <form wire:submit.prevent="savePupil" id="pupilsInfoForm">
         <div class="flex gap-4 items-start justify-center overflow-x-auto py-2">
             <div class="flex flex-col min-w-[180px]">
                 <label class="text-sm font-medium text-gray-700">First Name</label>
@@ -202,6 +235,7 @@
                 class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Save</button>
         </div>
     </form>
+    @endif
 
     <script>
         (function () {
@@ -232,9 +266,9 @@
             }
 
             function calcBMI(weight, height) {
-                if (!weight || !height) return null;
+                if (weight === null || weight === undefined || height === null || height === undefined) return null;
                 var h = height / 100; // cm -> m
-                if (h <= 0) return null;
+                if (isNaN(h) || h <= 0) return null;
                 var bmi = weight / (h * h);
                 return Math.round(bmi * 100) / 100;
             }
@@ -252,28 +286,28 @@
 
             function dispatchInput(el, value) {
                 if (!el) return;
-                el.value = value || '';
+                el.value = (value === null || value === undefined) ? '' : value;
                 el.dispatchEvent(new Event('input', {
                     bubbles: true
                 }));
             }
 
-            var dobEl = document.getElementById('date_of_birth');
-            var weighEl = document.getElementById('date_of_weighing');
-            var weightEl = document.getElementById('weight');
-            var heightEl = document.getElementById('height');
-            var sexEl = document.getElementById('sex');
-            var ageYearsEl = document.getElementById('age_years');
-            var ageMonthsEl = document.getElementById('age_months');
-            var bmiEl = document.getElementById('bmi');
-            var nutEl = document.getElementById('nutritional_status');
-            var hfaEl = document.getElementById('height_for_age');
-
             function recalc() {
+                var dobEl = document.getElementById('date_of_birth');
+                var weighEl = document.getElementById('date_of_weighing');
+                var weightEl = document.getElementById('weight');
+                var heightEl = document.getElementById('height');
+                var sexEl = document.getElementById('sex');
+                var ageYearsEl = document.getElementById('age_years');
+                var ageMonthsEl = document.getElementById('age_months');
+                var bmiEl = document.getElementById('bmi');
+                var nutEl = document.getElementById('nutritional_status');
+                var hfaEl = document.getElementById('height_for_age');
+
                 var dob = parseDate(dobEl ? dobEl.value : null);
                 var ref = parseDate(weighEl ? weighEl.value : null) || new Date();
-                var wt = parseFloat(weightEl ? weightEl.value : NaN);
-                var ht = parseFloat(heightEl ? heightEl.value : NaN);
+                var wt = parseFloat(weightEl && weightEl.value ? weightEl.value : NaN);
+                var ht = parseFloat(heightEl && heightEl.value ? heightEl.value : NaN);
 
                 if (dob) {
                     var a = calcAge(dob, ref);
@@ -286,7 +320,7 @@
                     dispatchInput(bmiEl, bmi);
                     dispatchInput(nutEl, calcNutritionalStatus(bmi));
                 } else {
-                    dispatchInput(bmiEl, '');
+                    dispatchInput(bmiEl, null);
                     dispatchInput(nutEl, '');
                 }
 
@@ -323,10 +357,13 @@
                 // }
             }
 
-            [dobEl, weighEl, weightEl, heightEl, sexEl].forEach(function (el) {
-                if (!el) return;
-                el.addEventListener('input', recalc);
-                el.addEventListener('change', recalc);
+            ['input','change'].forEach(function(evt){
+                document.addEventListener(evt, function(e){
+                    var id = e.target && e.target.id;
+                    if (['date_of_birth','date_of_weighing','weight','height','sex'].includes(id)) {
+                        recalc();
+                    }
+                });
             });
 
 

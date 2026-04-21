@@ -109,7 +109,7 @@ class Base extends Component
 
         $this->editingStudent = $pupil->id;
         // convert stored meters to centimeters for editing
-        $this->editingHeight = $pupil->height !== null ? ($pupil->height * 100) : null;
+        $this->editingHeight = $pupil->height !== null ? $pupil->height : null;
         $this->editingWeight = $pupil->weight;
     }
 
@@ -145,6 +145,7 @@ class Base extends Component
         $pupil->bmi = ($pupil->height && $pupil->weight) ? ($pupil->weight / ($pupil->height * $pupil->height)) : null;
         $pupil->nutritional_status = $this->getBMIStatus($pupil->bmi);
         $pupil->height_for_age = $this->getHFAStatus();
+        $pupil->height = $pupil->height * 100;
         $pupil->save();
 
         session()->flash('success', 'Pupil updated');

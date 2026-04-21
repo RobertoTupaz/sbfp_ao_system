@@ -179,8 +179,8 @@ class Add extends Component
         $this->first_name = $record->first_name;
         $this->last_name = $record->last_name;
         $this->suffix_name = $record->suffix_name;
-        $this->date_of_birth = $record->birthday;
-        $this->date_of_weighing = $record->date_of_weighing ?: date('Y-m-d');
+        $this->date_of_birth = $record->birthday ? Carbon::parse($record->birthday)->format('Y-m-d') : null;
+        // $this->date_of_weighing = $record->date_of_weighing ?: date('d-m-Y');
         $this->weight = $record->weight;
         $this->height = $record->height;
         $this->sex = $record->sex;

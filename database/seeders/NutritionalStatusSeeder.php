@@ -27,7 +27,7 @@ class NutritionalStatusSeeder extends Seeder
                 'birthday' => $faker->dateTimeBetween('-12 years', '-5 years')->format('Y-m-d'),
                 'sex' => $faker->randomElement(['M', 'F']),
                 'weight' => $faker->randomFloat(2, 12, 60),
-                'height' => $faker->randomFloat(2, 0.9, 1.6),
+                'height' => $faker->numberBetween(90, 150),
                 'age_years' => $faker->numberBetween(5, 12),
                 'age_months' => $faker->numberBetween(0, 11),
                 'bmi' => $faker->randomFloat(2, 12, 25),

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('school_id')->nullable()->after('password');
-            $table->string('role')->enum(['focal', 'ao', 'user', 'admin'])->default('user')->after('password');
+            //$table->string('role')->enum(['focal', 'ao', 'user', 'admin'])->default('user')->after('password');
 
             $table->foreign('school_id')
                 ->references('school_id')
@@ -33,7 +33,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['school_id']);
             $table->dropColumn('school_id');
-            $table->dropColumn('role');
+            // $table->dropColumn('role');
         });
     }
 

@@ -89,6 +89,7 @@ class Add extends Component
         if ($this->editingId) {
             $record = NutritionalStatus::find($this->editingId);
             if ($record) {
+                $this->getHFA(); // compute height_for_age before saving new record
                 $record->update([
                     'full_name' => $fullName,
                     'first_name' => $this->first_name,
@@ -115,6 +116,7 @@ class Add extends Component
                 ]);
             }
         } else {
+            $this->getHFA(); // compute height_for_age before saving new record
             $record = NutritionalStatus::create([
                 'full_name' => $fullName,
                 'first_name' => $this->first_name,

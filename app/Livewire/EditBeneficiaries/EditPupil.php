@@ -130,6 +130,7 @@ class EditPupil extends Component
         $fullName = trim("{$this->last_name}, {$this->first_name} {$this->suffix_name}");
         $fullName = preg_replace('/,\s*$/', '', $fullName);
 
+        $this->getHFA(); // compute height_for_age before saving
         $data = [
             'full_name' => $fullName,
             'first_name' => $this->first_name,

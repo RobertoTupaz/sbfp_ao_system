@@ -84,7 +84,9 @@ class BeneficiariesList extends Component
             });
         }
 
-        $this->swapCandidates = $query->limit(500)->get();
+        $query->orderByRaw("\n            CASE\n                WHEN grade = 'k' THEN 0\n                WHEN grade = '1' THEN 1\n                WHEN grade = '2' THEN 2\n                WHEN grade = '3' THEN 3\n                WHEN grade = '4' THEN 4\n                WHEN grade = '5' THEN 5\n                WHEN grade = '6' THEN 6\n                WHEN grade = '7' THEN 7\n                WHEN grade = '8' THEN 8\n                WHEN grade = '9' THEN 9\n                WHEN grade = '10' THEN 10\n                WHEN grade = '11' THEN 11\n                WHEN grade = '12' THEN 12\n                WHEN grade = 'non_graded' THEN 13\n                ELSE 14\n            END\n        ");
+
+        $this->swapCandidates = $query->limit(2000)->get();
     }
 
     public function clearSwapSearch()

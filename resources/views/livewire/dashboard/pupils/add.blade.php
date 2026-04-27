@@ -39,11 +39,11 @@
                     @endforeach
                 </div>
             @else
-                <div class="mt-2 text-sm text-gray-600">If no pupils found. <button type="button" wire:click="createNew" class="underline text-blue-600">Add new pupil</button></div>
+                <div class="mt-2 text-sm text-gray-600">No pupils found. <button type="button" wire:click="createNew" class="underline text-blue-600">Add new pupil</button></div>
             @endif
         @endif
     </div>
-
+    
     @if($editingId)
         <div class="mb-4 text-sm text-yellow-700">Editing existing pupil — <button type="button" wire:click="hideForm" class="underline text-blue-600">Cancel</button></div>
     @endif

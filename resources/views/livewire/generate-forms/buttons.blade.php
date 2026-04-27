@@ -103,11 +103,11 @@
             </div>
         </a>
 
-        <a href="#" role="button" aria-label="Generate Form 1" wire:click.prevent="generateForm1"
-            wire:loading.attr="disabled" wire:target="generateForm1"
+        <a href="#" role="button" aria-label="Generate Form 7" wire:click.prevent="generateForm7"
+            wire:loading.attr="disabled" wire:target="generateForm7"
             class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
             <div class="flex items-center justify-center mb-4">
-                <div wire:loading wire:target="generateForm1" class="flex items-center justify-center">
+                <div wire:loading wire:target="generateForm7" class="flex items-center justify-center">
                     <svg class="animate-spin h-12 w-12 text-blue-600" xmlns="http://www.w3.org/2000/svg"
                         fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -116,7 +116,7 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                     </svg>
                 </div>
-                <div wire:loading.remove wire:target="generateForm1">
+                <div wire:loading.remove wire:target="generateForm7">
                     <svg class="w-12 h-12 text-blue-600 group-hover:text-blue-700" xmlns="http://www.w3.org/2000/svg"
                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -125,12 +125,12 @@
                 </div>
             </div>
             <div class="text-lg font-medium text-gray-800">
-                <span wire:loading.remove wire:target="generateForm1">Form 7 PTR</span>
-                <span wire:loading wire:target="generateForm1">Generating...</span>
+                <span wire:loading.remove wire:target="generateForm7">Form 7 PTR</span>
+                <span wire:loading wire:target="generateForm7">Generating...</span>
             </div>
             <div class="text-sm text-gray-500 mt-2">
-                <span wire:loading.remove wire:target="generateForm1">Generate Form 7 PTR (School Level)</span>
-                <span wire:loading wire:target="generateForm1">Please wait — preparing download</span>
+                <span wire:loading.remove wire:target="generateForm7">Generate Form 7 PTR (School Level)</span>
+                <span wire:loading wire:target="generateForm7">Please wait — preparing download</span>
             </div>
         </a>
 
@@ -197,6 +197,12 @@
         }
 
         window.addEventListener('form1-ready', function(e) {
+            var url = e && e.detail && e.detail.url ? e.detail.url : null;
+            if (!url && e && e.detail) url = e.detail;
+            _gf_trigger_download(url);
+        });
+
+        window.addEventListener('form7-ready', function(e) {
             var url = e && e.detail && e.detail.url ? e.detail.url : null;
             if (!url && e && e.detail) url = e.detail;
             _gf_trigger_download(url);

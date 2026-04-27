@@ -140,6 +140,40 @@ class Buttons extends Component
         }
     }
 
+    public function generateForm7()
+    {
+        $template = public_path('exel/form7school_level.xlsx');
+        if (!file_exists($template)) {
+            session()->flash('error', 'Form7.xlsx not found in public/exel');
+            Log::error('Form7 write failed - template not found: ' . $template);
+            return;
+        }
+
+        try {
+            // load the existing spreadsheet
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $sheet->setCellValueByColumnAndRow(6, 6, 'data_value');
+
+            // save spreadsheet to a new temp file so the original template remains unchanged
+            $outFileName = 'Form7_filled_' . time() . '.xlsx';
+            $outFile = public_path('downloaded_exel/' . $outFileName);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($outFile);
+
+            session()->flash('success', 'Form7.xlsx generated for download.');
+
+            // dispatch browser event to trigger download of the generated public file
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
+            $this->dispatch('form7-ready', $downloadUrl);
+            Log::info('Form7 download URL dispatched: ' . $downloadUrl);
+        } catch (\Throwable $e) {
+            Log::error('Error writing Form7.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to update Form7.xlsx: ' . $e->getMessage());
+        }
+    }
+
     public function generateSnsElem()
     {
         $template = public_path('exel/sns_elem.xlsx');
@@ -344,15 +378,15 @@ class Buttons extends Component
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
 
-            session()->flash('success', 'Form1.xlsx generated for download.');
+            session()->flash('success', 'SNS_Elem.xlsx generated for download.');
 
             // dispatch browser event to trigger download of the generated public file
             $downloadUrl = asset('downloaded_exel/' . $outFileName);
             // dispatch SNS Elementary specific event
             $this->dispatch('sns-elem-ready', $downloadUrl);
         } catch (\Throwable $e) {
-            Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
-            session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
+            Log::error('Error writing SNS_Elem.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to update SNS_Elem.xlsx: ' . $e->getMessage());
         }
     }
 
@@ -446,15 +480,15 @@ class Buttons extends Component
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
 
-            session()->flash('success', 'Form1.xlsx generated for download.');
+            session()->flash('success', 'SNS_HighSchool.xlsx generated for download.');
 
             // dispatch browser event to trigger download of the generated public file
             $downloadUrl = asset('downloaded_exel/' . $outFileName);
             // dispatch SNS High School specific event
             $this->dispatch('sns-highschool-ready', $downloadUrl);
         } catch (\Throwable $e) {
-            Log::error('Error writing Form1.xlsx: ' . $e->getMessage());
-            session()->flash('error', 'Failed to update Form1.xlsx: ' . $e->getMessage());
+            Log::error('Error writing SNS_HighSchool.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to update SNS_HighSchool.xlsx: ' . $e->getMessage());
         }
     }
 

@@ -32,7 +32,7 @@ new class extends Component {
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                    @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                         <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
                             wire:navigate>
                             {{ __('Edit Beneficiaries') }}
@@ -113,7 +113,7 @@ new class extends Component {
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-                @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                     <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
                         {{ __('Edit Beneficiaries') }}
                     </x-responsive-nav-link>

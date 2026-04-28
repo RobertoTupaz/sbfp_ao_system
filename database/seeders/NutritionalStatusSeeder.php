@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\NutritionalStatus;
 use Faker\Factory as Faker;
+use Carbon\Carbon;
 
 class NutritionalStatusSeeder extends Seeder
 {
@@ -33,7 +34,7 @@ class NutritionalStatusSeeder extends Seeder
                 'bmi' => $faker->randomFloat(2, 12, 25),
                 'nutritional_status' => $faker->randomElement(['severely wasted', 'wasted', 'normal', 'overweight', 'obese']),
                 'height_for_age' => $faker->randomElement(['severely stunted', 'stunted', 'normal', 'tall']),
-                'date_of_weighing' => $faker->date(),
+                'date_of_weighing' => Carbon::today()->toDateString(),
                 'grade' => $faker->randomElement(array_merge(range(1, 12), ['k', 'non_graded'])),
                 'section' => $faker->randomElement(['A', 'B', 'C', 'D']),
                 '_4ps' => $faker->randomElement([0, 1]),

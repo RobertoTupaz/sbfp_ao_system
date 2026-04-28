@@ -154,7 +154,61 @@ class Buttons extends Component
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
             $sheet = $spreadsheet->getActiveSheet();
 
-            $sheet->setCellValueByColumnAndRow(6, 6, 'data_value');
+            // Build per-grade aggregates: kinder (k), grades 1..12, and non_graded
+            $grades = array_merge(['k'], range(1, 12), ['non_graded']);
+            $gradeStats = [];
+
+            foreach ($grades as $grade) {
+                $g = (string) $grade;
+                $gradeStats[$g] = NutritionalStatus::where('grade', $g)
+                    ->where('isBeneficiary', true)
+                    ->selectRaw('
+                        COUNT(*) as total,
+                        SUM(sex = "m") as total_m,
+                        SUM(sex = "f") as total_f,
+
+                        SUM(sex = "m" AND nutritional_status = "severely wasted") as severely_wasted_m,
+                        SUM(sex = "f" AND nutritional_status = "severely wasted") as severely_wasted_f,
+
+                        SUM(sex = "m" AND nutritional_status = "wasted") as wasted_m,
+                        SUM(sex = "f" AND nutritional_status = "wasted") as wasted_f,
+
+                        SUM(sex = "m" AND height_for_age = "severely stunted" AND nutritional_status IN ("normal","overweight","obese")) as severely_stunted_m,
+                        SUM(sex = "f" AND height_for_age = "severely stunted" AND nutritional_status IN ("normal","overweight","obese")) as severely_stunted_f,
+
+                        SUM(sex = "m" AND height_for_age = "stunted" AND NOT (nutritional_status IN ("severely wasted","wasted"))) as stunted_m,
+                        SUM(sex = "f" AND height_for_age = "stunted" AND NOT (nutritional_status IN ("severely wasted","wasted"))) as stunted_f,
+
+                        SUM(sex = "m" AND ip = 1 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as ip_m,
+                        SUM(sex = "f" AND ip = 1 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as ip_f,
+
+                        SUM(sex = "m" AND _4ps = 1 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as fourPs_m,
+                        SUM(sex = "f" AND _4ps = 1 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as fourPs_f,
+
+                        SUM(sex = "m" AND pardo = 1 AND _4ps = 0 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as pardo_m,
+                        SUM(sex = "f" AND pardo = 1 AND _4ps = 0 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as pardo_f
+                    ')
+                    ->first();
+            }
+            // aggregated counts for kinder beneficiaries (separate male/female)
+            $kinderCounts = NutritionalStatus::where('grade', 'k')
+                ->where('isBeneficiary', true)
+                ->selectRaw('
+                    SUM(sex = "m" AND nutritional_status IN ("normal","overweight","obese")) as all_kinder_m,
+                    SUM(sex = "f" AND nutritional_status IN ("normal","overweight","obese")) as all_kinder_f
+                ')
+                ->first();
+
+            $sheet->setCellValueByColumnAndRow(10, 18, $kinderCounts->all_kinder_m ?? 0);
+            $sheet->setCellValueByColumnAndRow(10, 19, $kinderCounts->all_kinder_f ?? 0);
+
+            $sheet->setCellValueByColumnAndRow(14, 18, $gradeStats['k']->severely_wasted_m ?? 0);
+            $sheet->setCellValueByColumnAndRow(14, 19, $gradeStats['k']->severely_wasted_f ?? 0);
+
+            $sheet->setCellValueByColumnAndRow(18, 18, $gradeStats['k']->wasted_m ?? 0);
+            $sheet->setCellValueByColumnAndRow(18, 19, $gradeStats['k']->wasted_f ?? 0);
+
+            // $gradeStats now contains per-grade aggregates for each category
 
             // save spreadsheet to a new temp file so the original template remains unchanged
             $outFileName = 'Form7_filled_' . time() . '.xlsx';

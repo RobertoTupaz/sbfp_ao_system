@@ -17,7 +17,7 @@ class Add extends Component
     public $search_lastname = '';
     public $searchResults = [];
     public $editingId = null;
-    public $showForm = false;
+    public $showForm = true;
     public $date_of_birth;
     public $date_of_weighing;
     public $weight;
@@ -150,7 +150,7 @@ class Add extends Component
 
         // reset form (clear editing state too)
         $this->editingId = null;
-        $this->showForm = false;
+        //$this->showForm = false;
         $this->search_lastname = '';
         $this->searchResults = [];
         $this->reset(['first_name', 'last_name', 'suffix_name', 'date_of_birth', 'date_of_weighing', 'weight', 'height', 'sex', 'age_years_months', 'age_years', 'age_months', 'bmi', 'nutritional_status', 'height_for_age', 'fourps', 'ip', 'pardo', 'dewormed', 'parent_consent_milk', 'sbfp_previous_beneficiary']);
@@ -215,7 +215,7 @@ class Add extends Component
     public function hideForm()
     {
         $this->editingId = null;
-        $this->showForm = false;
+        // $this->showForm = false;
         $this->searchResults = [];
         $this->search_lastname = '';
         $this->reset(['first_name', 'last_name', 'suffix_name', 'date_of_birth', 'weight', 'height', 'sex', 'age_years_months', 'age_years', 'age_months', 'bmi', 'nutritional_status', 'height_for_age', 'fourps', 'ip', 'pardo', 'dewormed', 'parent_consent_milk', 'sbfp_previous_beneficiary']);

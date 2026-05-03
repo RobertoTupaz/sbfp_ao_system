@@ -60,8 +60,8 @@
 
     @if ($showForm)
         <form wire:submit.prevent="savePupil" id="pupilsInfoForm">
-            <div class="flex gap-4 items-start justify-center overflow-x-auto py-2">
-                <div class="flex flex-col min-w-[180px]">
+            <div class="flex flex-wrap gap-4 items-start justify-center py-2">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/3 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">First Name</label>
                     <input id="first_name" type="text" wire:model.defer="first_name"
                         placeholder="Daniel" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -70,7 +70,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[180px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/3 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Last Name</label>
                     <input id="last_name" type="text" wire:model="last_name"
                         placeholder="Padilla" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -79,7 +79,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[120px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Suffix</label>
                     <input id="suffix_name" type="text" wire:model.defer="suffix_name"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -88,7 +88,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[140px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Grade</label>
                     <select id="grade" wire:model.defer="grade" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -113,7 +113,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[140px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Section</label>
                     <input id="section" type="text" wire:model.defer="section" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -122,8 +122,8 @@
                     @enderror
                 </div>
             </div>
-            <div class="flex gap-4 items-start justify-center overflow-x-auto py-2">
-                <div class="flex flex-col min-w-[180px]">
+            <div class="flex flex-wrap gap-4 items-start justify-center py-2">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Birthday</label>
                     <input id="date_of_birth" type="date" wire:model.defer="date_of_birth"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -132,7 +132,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[80px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/6 lg:w-1/12">
                     <label class="text-sm font-medium text-gray-700">Sex</label>
                     <select id="sex" wire:model.defer="sex"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
@@ -145,7 +145,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[140px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Height (cm)</label>
                     {{-- <input id="height" type="number" step="0.1" wire:model.defer="height"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" /> --}}
@@ -156,7 +156,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[140px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Weight (kg)</label>
                     <input id="weight" type="number" step="0.01" wire:model.defer="weight"
                         placeholder="weight (kg)" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -165,7 +165,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col gap-2 min-w-[240px]">
+                <div class="flex flex-col gap-2 w-full sm:w-full md:w-2/3 lg:w-1/2">
                     <label class="text-sm font-medium text-gray-700">Other flags</label>
                     <div class="flex flex-wrap gap-2">
                         <label class="inline-flex items-center text-sm">
@@ -196,8 +196,8 @@
                     </div>
                 </div>
             </div>
-            <div class="flex gap-4 items-center justify-center overflow-x-auto py-2">
-                <div class="flex gap-2 items-center min-w-[200px]">
+            <div class="flex flex-wrap gap-4 items-center justify-center py-2">
+                <div class="flex gap-2 items-center w-full sm:w-1/2 md:w-1/3">
                     <div class="flex flex-col w-1/2">
                         <label class="text-sm font-medium text-gray-700">Age (years)</label>
                         <input id="age_years" type="number" min="0" wire:model.defer="age_years"
@@ -217,7 +217,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col min-w-[140px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/6 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">BMI</label>
                     <input id="bmi" type="number" step="0.01" wire:model.defer="bmi"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
@@ -226,7 +226,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[180px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Nutritional Status</label>
                     <input id="nutritional_status" type="text" wire:model.defer="nutritional_status"
                         placeholder="e.g. Normal / Underweight"
@@ -236,7 +236,7 @@
                     @enderror
                 </div>
 
-                <div class="flex flex-col min-w-[160px]">
+                <div class="flex flex-col w-full sm:w-1/2 md:w-1/4 lg:w-1/6">
                     <label class="text-sm font-medium text-gray-700">Height for Age</label>
                     <input id="height_for_age" type="text" wire:model.defer="height_for_age"
                         placeholder="e.g. Normal / Stunted"
@@ -246,7 +246,7 @@
                     @enderror
                 </div>
             </div>
-            <div class="flex items-center min-w-[160px]">
+            <div class="flex items-center w-full">
                 <button type="submit"
                     class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Save</button>
             </div>

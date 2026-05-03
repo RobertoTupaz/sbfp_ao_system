@@ -103,19 +103,19 @@
             </div>
 
             <div class="flex flex-col min-w-[140px]">
-                <label class="text-sm font-medium text-gray-700">Weight (kg)</label>
-                <input id="weight" type="number" step="0.01" wire:model="weight"
+                <label class="text-sm font-medium text-gray-700">Height (cm)</label>
+                <input id="height" type="number" step="0.1" wire:model="height" wire:change="getHFA"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-                @error('weight')
+                @error('height')
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>
 
             <div class="flex flex-col min-w-[140px]">
-                <label class="text-sm font-medium text-gray-700">Height (cm)</label>
-                <input id="height" type="number" step="0.1" wire:model="height" wire:change="getHFA"
+                <label class="text-sm font-medium text-gray-700">Weight (kg)</label>
+                <input id="weight" type="number" step="0.01" wire:model="weight"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-                @error('height')
+                @error('weight')
                     <span class="text-red-500 text-sm">{{ $message }}</span>
                 @enderror
             </div>

@@ -211,6 +211,7 @@ class BeneficiariesList extends Component
                 'Wasted',
             ])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
+                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->limit($remaining)
                 ->orderByRaw("
                     CASE
@@ -221,8 +222,7 @@ class BeneficiariesList extends Component
                         WHEN grade = '4' THEN 4
                         WHEN grade = '5' THEN 5
                         WHEN grade = '6' THEN 6
-                        WHEN grade = 'non_graded' THEN 7
-                        ELSE 8
+                        ELSE 'non_graded'
                     END
                 ")
                 ->get();
@@ -238,6 +238,7 @@ class BeneficiariesList extends Component
             $phase1 = NutritionalStatus::where('nutritional_status', 'Normal')
                 ->whereIn('height_for_age', ['Severely Stunted', 'Stunted'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
+                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->orderByRaw("
                     CASE
                         WHEN grade = 'k' THEN 0
@@ -247,8 +248,7 @@ class BeneficiariesList extends Component
                         WHEN grade = '4' THEN 4
                         WHEN grade = '5' THEN 5
                         WHEN grade = '6' THEN 6
-                        WHEN grade = 'non_graded' THEN 7
-                        ELSE 8
+                        ELSE 'non_graded'
                     END
                 ")
                 ->limit($remaining)
@@ -263,6 +263,7 @@ class BeneficiariesList extends Component
 
             $phase2 = NutritionalStatus::where('nutritional_status', 'Normal')
                 ->whereIn('height_for_age', ['Normal', 'Tall'])
+                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->where(function ($q) {
                     $q->where('_4ps', 1)
                         ->orWhere('ip', 1)
@@ -278,8 +279,7 @@ class BeneficiariesList extends Component
                         WHEN grade = '4' THEN 4
                         WHEN grade = '5' THEN 5
                         WHEN grade = '6' THEN 6
-                        WHEN grade = 'non_graded' THEN 7
-                        ELSE 8
+                        ELSE 'non_graded'
                     END
                 ")
                 ->limit($remaining)
@@ -293,6 +293,7 @@ class BeneficiariesList extends Component
             $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
 
             $phase3 = NutritionalStatus::whereIn('nutritional_status', ['normal'])
+                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->orderByRaw("
                     CASE
@@ -318,6 +319,7 @@ class BeneficiariesList extends Component
             $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
 
             $phase4 = NutritionalStatus::whereIn('height_for_age', ['normal', 'tall'])
+                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->orderByRaw("
                     CASE
@@ -343,6 +345,7 @@ class BeneficiariesList extends Component
             $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
 
             $phase5 = NutritionalStatus::whereIn('nutritional_status', ['overweight'])
+                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->orderByRaw("
                     CASE

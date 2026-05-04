@@ -3,6 +3,7 @@
 namespace App\Livewire\EditBeneficiaries;
 
 use App\Models\HfaSimplifiedVersion;
+use App\Models\BmiVersionSimplefied;
 use App\Models\NutritionalStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -113,6 +114,78 @@ class EditPupil extends Component
         $this->height_for_age = $status;
     }
 
+    public function getBMI()
+    {
+        // compute age_years and age_months from birthday + weighing date when possible
+        if ($this->date_of_birth) {
+            $weighDate = $this->date_of_weighing ? Carbon::parse($this->date_of_weighing) : Carbon::now();
+            $dob = Carbon::parse($this->date_of_birth);
+            $years = $dob->diffInYears($weighDate);
+            $months = $dob->diffInMonths($weighDate) - ($years * 12);
+            $this->age_years = $years;
+            $this->age_months = $months;
+        }
+
+        // ensure BMI is calculated if possible
+        if (empty($this->bmi)) {
+            if ($this->weight && $this->height) {
+                $h = $this->height / 100.0;
+                if ($h > 0) {
+                    $bmi = $this->weight / ($h * $h);
+                    $this->bmi = round($bmi, 2);
+                }
+            }
+        }
+
+        $ageInMonths = ($this->age_years ?: 0) * 12 + ($this->age_months ?: 0);
+        $bmi = $this->bmi;
+        $gender = $this->sex == 'm' ? 'm' : 'f';
+
+        // Try to find WHO BMI-for-age reference in DB
+        $ref = null;
+        if ($ageInMonths && $bmi !== null) {
+            $ref = BmiVersionSimplefied::where('months', $ageInMonths)
+                ->where('sex', $gender)
+                ->first();
+        }
+
+        $status = '';
+
+        if ($ref) {
+            if ($bmi < $ref->sd_minus_3) {
+                $status = 'Severely Wasted';
+            } elseif ($bmi < $ref->sd_minus_2) {
+                $status = 'Wasted';
+            } elseif ($bmi <= $ref->sd_plus_2) {
+                $status = 'Normal';
+            } elseif ($bmi <= $ref->sd_plus_3) {
+                $status = 'Overweight';
+            } else {
+                $status = 'Obese';
+            }
+        } else {
+            // Fallback heuristic when DB/API reference is missing
+            if ($bmi === null) {
+                $status = '';
+            } else {
+                if ($bmi < 16) {
+                    $status = 'Severely Wasted';
+                } elseif ($bmi < 17) {
+                    $status = 'Wasted';
+                } elseif ($bmi <= 25) {
+                    $status = 'Normal';
+                } elseif ($bmi <= 30) {
+                    $status = 'Overweight';
+                } else {
+                    $status = 'Obese';
+                }
+            }
+        }
+
+        $this->nutritional_status = $status;
+        Log::info('Computed BMI status: ' . $status . ' (ageMonths=' . $ageInMonths . ', bmi=' . $bmi . ')');
+    }
+
     public function savePupil()
     {
         $this->validate();
@@ -129,8 +202,8 @@ class EditPupil extends Component
 
         $fullName = trim("{$this->last_name}, {$this->first_name} {$this->suffix_name}");
         $fullName = preg_replace('/,\s*$/', '', $fullName);
-
         $this->getHFA(); // compute height_for_age before saving
+        $this->getBMI(); // compute nutritional_status before saving (DB fallback)
         $data = [
             'full_name' => $fullName,
             'first_name' => $this->first_name,

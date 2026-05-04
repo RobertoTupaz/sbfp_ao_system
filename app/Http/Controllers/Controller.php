@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\HfaSimplifiedVersion;
+use App\Models\BmiVersionSimplefied;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\Request;
@@ -50,6 +51,52 @@ class Controller extends BaseController
             'age_months' => $ageMonths,
             'gender'     => $gender,
             'height_cm'  => $height,
+            'status'     => $status,
+        ]);
+    }
+
+    public function getBMI(Request $request)
+    {
+        $request->validate([
+            'age_months' => 'required|numeric|min:60|max:228',
+            'bmi'        => 'required|numeric|min:2|max:80',
+            'gender'     => 'required|in:male,female',
+        ]);
+
+        $ageMonths = $request->age_months;
+        $bmi       = $request->bmi;
+        $gender    = $request->gender;
+
+        $sex = $gender === 'male' ? 'm' : 'f';
+
+        $ref = BmiVersionSimplefied::where('months', $ageMonths)
+            ->where('sex', $sex)
+            ->first();
+
+        if (!$ref) {
+            return response()->json([
+                'error' => 'WHO BMI-for-age reference not found for given age and gender.'
+            ], 404);
+        }
+
+        $status = '';
+
+        if ($bmi < $ref->sd_minus_3) {
+            $status = 'Severely Wasted';
+        } elseif ($bmi < $ref->sd_minus_2) {
+            $status = 'Wasted';
+        } elseif ($bmi <= $ref->sd_plus_2) {
+            $status = 'Normal';
+        } elseif ($bmi <= $ref->sd_plus_3) {
+            $status = 'Overweight';
+        } else {
+            $status = 'Obese';
+        }
+
+        return response()->json([
+            'age_months' => $ageMonths,
+            'gender'     => $gender,
+            'bmi'        => $bmi,
             'status'     => $status,
         ]);
     }

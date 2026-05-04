@@ -27,7 +27,7 @@ class NutritionalStatus extends Model
         'date_of_weighing',
         'grade',
         'section',
-        '4ps',
+        '_4ps',
         'ip',
         'pardo',
         'dewormed',

@@ -300,6 +300,10 @@
 
             // Height-for-age is computed via server API at /api/get-hfa
 
+            // Debounce timer for BMI API calls so we don't fetch on every keystroke
+            var bmiApiDebounceTimer = null;
+            var BMI_API_DEBOUNCE_MS = 1500;
+
             function dispatchInput(el, value) {
                 if (!el) return;
                 el.value = (value === null || value === undefined) ? '' : value;
@@ -334,43 +338,49 @@
                 var bmi = calcBMI(isNaN(wt) ? null : wt, isNaN(ht) ? null : ht);
                 if (bmi !== null) {
                     dispatchInput(bmiEl, bmi);
-                    dispatchInput(nutEl, calcNutritionalStatus(bmi));
+
+                    // Prefer WHO BMI-for-age API when age/gender are in supported range (60-228 months)
+                    var ageYears = null;
+                    if (dob) {
+                        var a2 = calcAge(dob, ref);
+                        ageYears = a2.years + (a2.months / 12);
+                    }
+                    var sexVal = sexEl && sexEl.value ? sexEl.value.toUpperCase() : null;
+                    var ageMonthsRounded = null;
+                    if (ageYears !== null) {
+                        ageMonthsRounded = Math.round(ageYears * 12);
+                    }
+
+                    if (ageMonthsRounded >= 60 && ageMonthsRounded <= 228 && sexVal) {
+                        var genderParam = (sexVal === 'M') ? 'male' : (sexVal === 'F' ? 'female' : '');
+                        if (genderParam) {
+                            // debounce API call — wait until user stops typing
+                            if (bmiApiDebounceTimer) clearTimeout(bmiApiDebounceTimer);
+                            bmiApiDebounceTimer = setTimeout(function() {
+                                fetch('/api/get-bmi?age_months=' + encodeURIComponent(ageMonthsRounded) + '&bmi=' + encodeURIComponent(bmi) + '&gender=' + encodeURIComponent(genderParam))
+                                    .then(function (resp) { if (resp.ok) return resp.json(); throw new Error('BMI API failed'); })
+                                    .then(function (json) {
+                                        dispatchInput(nutEl, json.status || calcNutritionalStatus(bmi));
+                                    })
+                                    .catch(function (err) {
+                                        console.error('BMI API error', err);
+                                        dispatchInput(nutEl, calcNutritionalStatus(bmi));
+                                    });
+                            }, BMI_API_DEBOUNCE_MS);
+                        } else {
+                            if (bmiApiDebounceTimer) { clearTimeout(bmiApiDebounceTimer); bmiApiDebounceTimer = null; }
+                            dispatchInput(nutEl, calcNutritionalStatus(bmi));
+                        }
+                    } else {
+                        if (bmiApiDebounceTimer) { clearTimeout(bmiApiDebounceTimer); bmiApiDebounceTimer = null; }
+                        // Age out of BMI reference range — fall back to local heuristic
+                        dispatchInput(nutEl, calcNutritionalStatus(bmi));
+                    }
+
                 } else {
                     dispatchInput(bmiEl, null);
                     dispatchInput(nutEl, '');
                 }
-
-                var ageYears = null;
-                if (dob) {
-                    var a2 = calcAge(dob, ref);
-                    ageYears = a2.years + (a2.months / 12);
-                }
-                var sexVal = sexEl && sexEl.value ? sexEl.value.toUpperCase() : null;
-                // if (ht && ageYears && sexVal) {
-                //     var ageMonthsRounded = Math.round(ageYears * 12);
-                //     // Only query API for ages supported by server (controller validates 60-228 months)
-                //     if (ageMonthsRounded >= 60 && ageMonthsRounded <= 228) {
-                //         var genderParam = (sexVal === 'M') ? 'male' : (sexVal === 'F' ? 'female' : '');
-                //         if (genderParam) {
-                //             fetch('/api/get-hfa?age_months=' + encodeURIComponent(ageMonthsRounded) + '&height_cm=' + encodeURIComponent(ht) + '&gender=' + encodeURIComponent(genderParam))
-                //                 .then(function (resp) { if (resp.ok) return resp.json(); throw new Error('HFA API failed'); })
-                //                 .then(function (json) {
-                //                     dispatchInput(hfaEl, json.status || '');
-                //                 })
-                //                 .catch(function (err) {
-                //                     console.error('HFA API error', err);
-                //                     dispatchInput(hfaEl, '');
-                //                 });
-                //         } else {
-                //             dispatchInput(hfaEl, '');
-                //         }
-                //     } else {
-                //         // Age out of API supported range — leave blank
-                //         dispatchInput(hfaEl, '');
-                //     }
-                // } else {
-                //     dispatchInput(hfaEl, '');
-                // }
             }
 
             ['input', 'change'].forEach(function(evt) {

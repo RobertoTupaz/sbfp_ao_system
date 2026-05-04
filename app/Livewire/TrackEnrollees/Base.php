@@ -7,6 +7,7 @@ use Livewire\Component;
 use App\Models\NutritionalStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class Base extends Component
 {
@@ -143,7 +144,7 @@ class Base extends Component
         $pupil->height = $this->editingHeight !== null ? ($this->editingHeight / 100) : null;
         $pupil->weight = $this->editingWeight;
         $pupil->bmi = ($pupil->height && $pupil->weight) ? ($pupil->weight / ($pupil->height * $pupil->height)) : null;
-        $pupil->nutritional_status = $this->getBMIStatus($pupil->bmi);
+        $pupil->nutritional_status = $this->getBMIStatus($pupil->bmi, $pupil);
         $pupil->height_for_age = $this->getHFAStatus();
         $pupil->height = $pupil->height * 100;
         $pupil->save();
@@ -167,12 +168,10 @@ class Base extends Component
         $height = (float)$height;
         $gender = strtolower($gender) === 'm' || strtolower($gender) === 'male' ? 'male' : 'female';
 
-        Log::info($ageInMonths . ' ' . $height . ' ' . $gender);
         $hfa = HfaSimplifiedVersion::where('month', $ageInMonths)
             ->where('gender', $gender)
             ->first();
 
-        Log::info($hfa);
         if (!$hfa) {
             return null;
         }
@@ -195,26 +194,52 @@ class Base extends Component
     /**
      * Determine BMI category from BMI value.
      */
-    public function getBMIStatus($bmi)
+    /**
+     * Determine BMI category by calling the internal API route `/api/get-bmi`.
+     * Accepts an optional $pupil object to derive age and gender.
+     */
+    public function getBMIStatus($bmi, $pupil = null)
     {
         if ($bmi === null) {
             return null;
         }
 
-        // Simple heuristic thresholds suitable for seeded/test data.
-        if ($bmi < 16.0) {
-            return 'severely wasted';
+        if ($pupil === null) {
+            if (!$this->editingStudent) {
+                return null;
+            }
+            $pupil = NutritionalStatus::find($this->editingStudent);
+            if (!$pupil) {
+                return null;
+            }
         }
 
-        if ($bmi < 17.0) {
-            return 'wasted';
+        $ageInMonths = 0;
+        if (isset($pupil->age_years) || isset($pupil->age_months)) {
+            $ageInMonths = ((int)($pupil->age_years ?? 0) * 12) + (int)($pupil->age_months ?? 0);
         }
 
-        if ($bmi < 25.0) {
-            return 'normal';
+        $gender = strtolower($pupil->sex ?? 'm') === 'm' ? 'male' : 'female';
+
+        if ($ageInMonths <= 0) {
+            return null;
         }
 
-        return 'overweight';
+        try {
+            $response = Http::timeout(5)->post(url('/api/get-bmi'), [
+                'age_months' => $ageInMonths,
+                'bmi' => $bmi,
+                'gender' => $gender,
+            ]);
+
+            if ($response->successful() && $response->json('status')) {
+                return strtolower($response->json('status'));
+            }
+        } catch (\Exception $e) {
+            Log::warning('getBMIStatus API call failed: ' . $e->getMessage());
+        }
+
+        return null;
     }
 
     /**

@@ -4,6 +4,7 @@ use App\Models\PrimarySecondaryBeneficiaries;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -38,43 +39,49 @@ return new class extends Migration
 
     public function createPrimarySecondaryBeneficiaries()
     {
-        PrimarySecondaryBeneficiaries::create([
-            'name' => 'Primary',
-            'all_kinder' => true,
-            'all_grade_1' => false,
-            'all_grade_2' => false,
-            'all_grade_3' => false,
-            'severely_wasted' => true,
-            'wasted' => true,
-            'normal_weight' => false,
-            'overweight_obese' => false,
-            'severely_stunted' => false,
-            'stunted' => false,
-            'normal_height' => false,
-            'tall' => false,
-            '_4ps' => false,
-            'ip'=> false,
-            'pardo'=> false,
+        $now = now();
 
-        ]);
-
-        PrimarySecondaryBeneficiaries::create([
-            'name' => 'Secondary',
-            'all_kinder' => false,
-            'all_grade_1' => false,
-            'all_grade_2' => false,
-            'all_grade_3' => false,
-            'severely_wasted' => false,
-            'wasted' => false,
-            'normal_weight' => true,
-            'overweight_obese' => false,
-            'severely_stunted' => true,
-            'stunted' => true,
-            'normal_height' => false,
-            'tall' => false,
-            '_4ps'=> true,
-            'ip'=> true,
-            'pardo'=> true,
+        DB::table('primary_secondary_beneficiaries')->insert([
+            [
+                'name' => 'Primary',
+                'all_kinder' => 1,
+                'all_grade_1' => 0,
+                'all_grade_2' => 0,
+                'all_grade_3' => 0,
+                'severely_wasted' => 1,
+                'wasted' => 1,
+                'normal_weight' => 0,
+                'overweight_obese' => 0,
+                'severely_stunted' => 0,
+                'stunted' => 0,
+                'normal_height' => 0,
+                'tall' => 0,
+                '_4ps' => 0,
+                'ip' => 0,
+                'pardo' => 0,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'name' => 'Secondary',
+                'all_kinder' => 0,
+                'all_grade_1' => 0,
+                'all_grade_2' => 0,
+                'all_grade_3' => 0,
+                'severely_wasted' => 0,
+                'wasted' => 0,
+                'normal_weight' => 1,
+                'overweight_obese' => 0,
+                'severely_stunted' => 1,
+                'stunted' => 1,
+                'normal_height' => 0,
+                'tall' => 0,
+                '_4ps' => 1,
+                'ip' => 1,
+                'pardo' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
         ]);
     }
 

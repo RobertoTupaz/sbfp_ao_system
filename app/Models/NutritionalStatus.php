@@ -43,5 +43,11 @@ class NutritionalStatus extends Model
         'bmi' => 'float',
         'age_years' => 'integer',
         'age_months' => 'integer',
+        '_4ps' => 'boolean',
+        'ip' => 'boolean',
+        'pardo' => 'boolean',
+        'dewormed' => 'boolean',
+        'parent_consent_milk' => 'boolean',
+        'sbfp_previous_beneficiary' => 'boolean',
     ];
 }

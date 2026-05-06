@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
+use Database\Seeders\NutritionalStatusSeeder;
 use Livewire\Volt\Volt;
 
 /*
@@ -39,5 +41,18 @@ Route::view('/profile', 'profile')
 Route::view('/generate/reports', 'generateReports')
     ->middleware(['auth'])
     ->name('generate_reports');
+
+Route::get('/run-nutritional-seeder', function () {
+    if (!app()->environment('local')) {
+        abort(403);
+    }
+
+    Artisan::call('db:seed', [
+        '--class' => NutritionalStatusSeeder::class,
+        '--force' => true,
+    ]);
+
+    return response(Artisan::output());
+})->name('run.nutritional.seeder');
 
 require __DIR__ . '/auth.php';

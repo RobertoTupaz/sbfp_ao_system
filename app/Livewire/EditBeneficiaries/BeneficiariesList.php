@@ -174,25 +174,25 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($allKinderBeneficiaries);
-            $remaining = $beneficiariesCount->beneficiaries_count - $allKinderBeneficiaries->count();
+            $remaining = $remaining - $allKinderBeneficiaries->count();
         }
-
+        Log::info($remaining . ': remaining k before grade-based primary selection');
         if ($primary->all_grade_1 == true) {
             $allGrade1 = NutritionalStatus::where('grade', '=', '1')
                 ->limit($remaining)
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($allGrade1);
-            $remaining = $beneficiariesCount->beneficiaries_count - $allGrade1->count();
+            $remaining = $remaining - $allGrade1->count();
         }
-
+Log::info($remaining . ': remaining 1 before grade-based primary selection');
         if ($primary->all_grade_2 == true) {
             $allGrade2 = NutritionalStatus::where('grade', '=', '2')
                 ->limit($remaining)
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($allGrade2);
-            $remaining = $beneficiariesCount->beneficiaries_count - $allGrade2->count();
+            $remaining = $remaining - $allGrade2->count();
         }
 
         if ($primary->all_grade_3 == true) {
@@ -201,7 +201,7 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($allGrade3);
-            $remaining = $beneficiariesCount->beneficiaries_count - $allGrade3->count();
+            $remaining = $remaining - $allGrade3->count();
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
@@ -226,9 +226,9 @@ class BeneficiariesList extends Component
                     END
                 ")
                 ->get();
-
             $beneficiaries = $beneficiaries->merge($primarybeneficiaries);
-            $remaining = $beneficiariesCount->beneficiaries_count - $primarybeneficiaries->count();
+            $remaining = $remaining - $primarybeneficiaries->count();
+
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
@@ -255,11 +255,10 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase1);
+            $remaining = $remaining - $phase1->count();
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
-
-            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
 
             $phase2 = NutritionalStatus::where('nutritional_status', 'Normal')
                 ->whereIn('height_for_age', ['Normal', 'Tall'])
@@ -286,11 +285,10 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase2);
+            $remaining = $remaining - $phase2->count();
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
-
-            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
 
             $phase3 = NutritionalStatus::whereIn('nutritional_status', ['normal'])
                 ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
@@ -312,12 +310,10 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase3);
+            $remaining = $remaining - $phase3->count();
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
-
-            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
-
             $phase4 = NutritionalStatus::whereIn('height_for_age', ['normal', 'tall'])
                 ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
@@ -338,12 +334,10 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase4);
+            $remaining = $remaining - $phase4->count();
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
-
-            $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
-
             $phase5 = NutritionalStatus::whereIn('nutritional_status', ['overweight'])
                 ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
@@ -364,6 +358,7 @@ class BeneficiariesList extends Component
                 ->get();
 
             $beneficiaries = $beneficiaries->merge($phase5);
+            $remaining = $remaining - $phase5->count();
         }
 
         $setBeneficiariesLocal = $beneficiaries->each(function ($beneficiary) {

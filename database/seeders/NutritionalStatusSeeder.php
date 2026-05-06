@@ -16,7 +16,7 @@ class NutritionalStatusSeeder extends Seeder
     {
         $faker = Faker::create();
 
-        for ($i = 0; $i < 1000; $i++) {
+        for ($i = 0; $i < 3000; $i++) {
             $firstName = $faker->firstName;
             $lastName = $faker->lastName;
             $fullName = $firstName . ' ' . $lastName;

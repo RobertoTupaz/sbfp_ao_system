@@ -43,9 +43,9 @@ Route::view('/generate/reports', 'generateReports')
     ->name('generate_reports');
 
 Route::get('/run-nutritional-seeder', function () {
-    if (!app()->environment('local')) {
-        abort(403);
-    }
+    // if (!app()->environment('local')) {
+    //     abort(403);
+    // }
 
     Artisan::call('db:seed', [
         '--class' => NutritionalStatusSeeder::class,

@@ -194,8 +194,8 @@ class Buttons extends Component
             $kinderCounts = NutritionalStatus::where('grade', 'k')
                 ->where('isBeneficiary', true)
                 ->selectRaw('
-                    SUM(sex = "m" AND nutritional_status IN ("normal","overweight","obese")) as all_kinder_m,
-                    SUM(sex = "f" AND nutritional_status IN ("normal","overweight","obese")) as all_kinder_f
+                    SUM(sex = "m" AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as all_kinder_m,
+                    SUM(sex = "f" AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as all_kinder_f
                 ')
                 ->first();
 

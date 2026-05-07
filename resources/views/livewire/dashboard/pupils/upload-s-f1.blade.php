@@ -8,7 +8,7 @@
 
         <div class="grid sm:grid-cols-3 gap-4 items-center">
             <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Excel file</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">SF1 upload</label>
 
                 <div class="flex items-center gap-3">
                     <label class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700">

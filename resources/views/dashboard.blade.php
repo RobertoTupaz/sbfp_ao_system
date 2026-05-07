@@ -6,10 +6,15 @@
     </x-slot>
 
     <div class="py-12">
-        @unless(auth()->check() && auth()->user()->role === 'focal')
+        @unless (auth()->check() && auth()->user()->role === 'focal')
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     @livewire('dashboard.set-school.setschoolid')
+                </div>
+            </div>
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    @livewire('dashboard.pupils.upload-s-f1')
                 </div>
             </div>
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
@@ -24,7 +29,7 @@
             </div>
         @endunless
 
-        @unless(auth()->check() && auth()->user()->role != 'focal')
+        @unless (auth()->check() && auth()->user()->role != 'focal')
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     @livewire('dashboard.focal')

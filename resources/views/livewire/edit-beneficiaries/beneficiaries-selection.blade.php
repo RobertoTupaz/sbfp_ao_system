@@ -4,7 +4,10 @@
         <section
             style="flex:1;min-width:300px;border:1px solid #e6e6e6;padding:16px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03);">
             <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <span class="text-2xl">Guideline</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-2xl">Guideline</span>
+                    <x-feature-help>Configure priority rules for automatic beneficiary selection. Check the grades to include all pupils from those levels first. Remaining slots are filled by nutritional status (Severely Wasted → Wasted → Stunted → Normal with 4Ps/IP/PARDO → others). Click "Set Beneficiaries" to apply.</x-feature-help>
+                </div>
             </header>
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
                 <div>

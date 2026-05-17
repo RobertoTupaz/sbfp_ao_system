@@ -5,6 +5,10 @@
                 <div class="text-green-600">{{ session('message') }}</div>
             @endif
 
+            <div class="flex items-center gap-1.5">
+                <label class="text-sm font-medium text-gray-700">School ID</label>
+                <x-feature-help>Link your account to a school by entering its DepEd School ID. This is required before uploading pupil data or generating forms. The ID must match a registered school in the system.</x-feature-help>
+            </div>
             <input type="text" wire:model.defer="school_id" placeholder="Enter school id" class="border rounded px-2 py-1" />
             @error('school_id') <div class="text-red-600">{{ $message }}</div> @enderror
 

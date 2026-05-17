@@ -4,7 +4,10 @@
     @endif
 
     <div class="flex items-center justify-between mb-4 gap-4">
-        <h3 class="text-lg font-semibold">Add Pupil</h3>
+        <div class="flex items-center gap-1.5">
+            <h3 class="text-lg font-semibold">Add Pupil</h3>
+            <x-feature-help>Manually add a new pupil or edit an existing one. Search by last name to find a record, or create a new entry. Height, weight, BMI, and nutritional status are calculated automatically as you fill in the fields.</x-feature-help>
+        </div>
         <div class="flex flex-col items-center items-end gap-2">
             <label class="text-sm font-medium text-gray-700">Date of weighing</label>
             <input type="date" id="date_of_weighing" wire:model.defer="date_of_weighing"

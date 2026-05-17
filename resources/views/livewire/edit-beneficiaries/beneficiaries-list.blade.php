@@ -1,4 +1,8 @@
 <div>
+	<div class="flex items-center gap-1.5 mb-3">
+		<h3 class="text-sm font-semibold text-gray-700">Beneficiaries List</h3>
+		<x-feature-help>View and manage selected SBFP beneficiaries. Search by name, grade, or section. Use the Swap button to replace a beneficiary with another eligible pupil — the swap is logged with a reason for audit purposes.</x-feature-help>
+	</div>
 	<div class="flex items-center gap-2 mb-4">
 		<input id="beneficiary-search" type="text" placeholder="Search beneficiaries by name, grade or section"
 			wire:model.defer="search"

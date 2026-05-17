@@ -53,6 +53,9 @@ new class extends Component {
                             {{ __('Track Enrollees') }}
                         </x-nav-link>
                     @endif
+                    <x-nav-link :href="route('analytics')" :active="request()->routeIs('analytics')" wire:navigate>
+                        {{ __('Analytics') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -131,6 +134,9 @@ new class extends Component {
                         {{ __('Track Enrollees') }}
                     </x-responsive-nav-link>
                 @endif
+                <x-responsive-nav-link :href="route('analytics')" :active="request()->routeIs('analytics')" wire:navigate>
+                    {{ __('Analytics') }}
+                </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->

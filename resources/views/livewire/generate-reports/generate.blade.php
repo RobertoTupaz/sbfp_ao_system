@@ -27,7 +27,10 @@
 				class="ml-2 px-4 py-2 bg-blue-600 text-white rounded shadow-sm text-sm">Save</button>
 		</div>
 	</div>
-	<h2 class="text-xl font-semibold text-gray-800">Generate Reports</h2>
+	<div class="flex items-center gap-2">
+		<h2 class="text-xl font-semibold text-gray-800">Generate Reports</h2>
+		<x-feature-help>Generate school-level SBFP monitoring reports as downloadable Excel files. Select a school year and survey state (Baseline or Midline) before generating. Available reports: Baseline, Midline, Form 7, and Form 2 (School Summary).</x-feature-help>
+	</div>
 	<div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
 		<a href="#" role="button" aria-label="Generate Baseline" wire:click.prevent="generateBaseline"
 			class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">

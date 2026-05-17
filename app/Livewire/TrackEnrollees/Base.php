@@ -16,6 +16,7 @@ class Base extends Component
     public $sectionCounts = [];
     public $selectedSection = null;
     public $students = [];
+    public $showDeleteAll = false;
     // editing state
     public $editingStudent = null;
     public $editingHeight = null;
@@ -29,7 +30,7 @@ class Base extends Component
 
     protected function loadGradeCounts()
     {
-        $grades = array_merge(['k'], array_map('strval', range(1, 12)));
+        $grades = array_merge(['k'], array_map('strval', range(1, 12)), ['non_graded']);
 
         $counts = NutritionalStatus::query()
             ->select('grade', DB::raw('count(*) as total'))
@@ -98,6 +99,36 @@ class Base extends Component
     {
         $this->selectedSection = null;
         $this->students = [];
+    }
+
+    public function deleteAllPupils()
+    {
+        NutritionalStatus::truncate();
+        session()->flash('success', 'All pupils deleted');
+
+        $this->selectedGrade = null;
+        $this->sectionCounts = [];
+        $this->selectedSection = null;
+        $this->students = [];
+        $this->showDeleteAll = false;
+        $this->loadGradeCounts();
+    }
+
+    public function deletePupil($studentId)
+    {
+        $pupil = NutritionalStatus::find($studentId);
+        if (!$pupil) {
+            session()->flash('error', 'Pupil not found');
+            return;
+        }
+
+        $pupil->delete();
+        session()->flash('success', 'Pupil deleted');
+
+        $this->loadGradeCounts();
+        if ($this->selectedGrade !== null && $this->selectedSection !== null) {
+            $this->loadStudents($this->selectedSection);
+        }
     }
 
     public function startEdit($studentId)

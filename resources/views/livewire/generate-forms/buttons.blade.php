@@ -1,5 +1,8 @@
 <div class="max-w-5xl mx-auto px-4">
-    <h3 class="text-2xl font-semibold text-gray-800 mb-6">Generate Forms</h3>
+    <div class="flex items-center gap-2 mb-6">
+        <h3 class="text-2xl font-semibold text-gray-800">Generate Forms</h3>
+        <x-feature-help>Generate official DepEd SBFP forms as downloadable Excel files based on the current beneficiary list. Available forms: SNS Elementary, SNS High School, Form 1 (Pupils/Nutritional Status), and Form 7 PTR (School Level).</x-feature-help>
+    </div>
 
     {{-- <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">Beneficiaries count</label>

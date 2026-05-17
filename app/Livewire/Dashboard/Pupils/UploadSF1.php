@@ -17,6 +17,7 @@ class UploadSF1 extends Component
     public $rows = [];
     public $preview = false;
     public $changeAllGrade = '';
+    public $changeAllSection = '';
 
     protected $rules = [
         'excel' => 'required|file|mimes:xlsx,xls,csv'
@@ -27,6 +28,13 @@ class UploadSF1 extends Component
         $this->preview = false;
         $this->rows = [];
         $this->changeAllGrade = '';
+        $this->changeAllSection = '';
+    }
+
+    public function deleteRow($index)
+    {
+        array_splice($this->rows, $index, 1);
+        $this->rows = array_values($this->rows);
     }
 
     public function updatedChangeAllGrade($value)
@@ -35,6 +43,28 @@ class UploadSF1 extends Component
         foreach ($this->rows as $index => $row) {
             $this->rows[$index]['grade'] = $value;
         }
+    }
+
+    public function updatedChangeAllSection($value)
+    {
+        foreach ($this->rows as $index => $row) {
+            $this->rows[$index]['section'] = $value;
+        }
+    }
+
+    protected function normalizeGrade($value): string
+    {
+        $v = strtolower(trim((string) $value));
+
+        if (in_array($v, ['kinder', 'kindergarten', 'k'], true)) {
+            return 'k';
+        }
+
+        if (in_array($v, ['non-graded', 'non graded', 'non_graded'], true)) {
+            return 'non_graded';
+        }
+
+        return $value;
     }
 
     protected function processGrade($gradeValue)
@@ -116,7 +146,7 @@ class UploadSF1 extends Component
                 'last_name' => $nameParts['last_name'],
                 'first_name' => $nameParts['first_name'],
                 'middle_name' => $nameParts['middle_name'],
-                'sex' => $sex,
+                'sex' => strtolower($sex),
                 'birthdate' => $parsedBirthdate,
                 'age_years' => $ageData['years'],
                 'age_months' => $ageData['months'],
@@ -221,7 +251,7 @@ class UploadSF1 extends Component
                 'weight' => !empty($row['ip']) ? (float) $row['ip'] : null,
                 'age_years' => $row['age_years'] ?? null,
                 'age_months' => $row['age_months'] ?? null,
-                'grade' => $row['grade'] ?? null,
+                'grade' => isset($row['grade']) ? $this->normalizeGrade($row['grade']) : null,
                 'section' => $row['section'] ?? null,
                 'ip' => !empty($row['ip']) ? true : false,
                 '_4ps' => !empty($row['_4ps']),

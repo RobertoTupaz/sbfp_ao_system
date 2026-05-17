@@ -8,7 +8,10 @@
 
         <div class="grid sm:grid-cols-3 gap-4 items-center">
             <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">SF1 upload</label>
+                <div class="flex items-center gap-1.5 mb-2 z-1000">
+                    <label class="block text-sm font-medium text-gray-700">SF1 upload</label>
+                    <x-feature-help>Upload a School Form 1 (SF1) Excel file exported from the DepEd LIS system. The file is parsed to extract pupil names, grade, section, birth dates, and demographic flags. Review the preview table before saving.</x-feature-help>
+                </div>
 
                 <div class="flex items-center gap-3">
                     <label class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded cursor-pointer hover:bg-blue-700">
@@ -54,14 +57,18 @@
                             @endfor
                         </select>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Change all section:</label>
+                        <input type="text" wire:model.live="changeAllSection" placeholder="e.g. Sampaguita" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white w-40">
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full border-collapse border border-gray-300">
                         <thead class="bg-gray-200">
                             <tr>
-                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Row</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">LRN</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Grade</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Section</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Last Name</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">First Name</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Sex</th>
@@ -69,21 +76,24 @@
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Age (Yrs)</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Age (Mos)</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">IP</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold">4Ps</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold">PARDO</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold">Dewormed</th>
-                                <th class="border border-gray-300 px-4 py-2 text-center text-sm font-semibold">Prev. Ben.</th>
+                                <th class="border border-gray-300 py-2 text-center text-sm font-semibold">4Ps</th>
+                                <th class="border border-gray-300 py-2 text-center text-sm font-semibold">PARDO</th>
+                                <th class="border border-gray-300 py-2 text-center text-sm font-semibold">Dewormed</th>
+                                <th class="border border-gray-300 py-2 text-center text-sm font-semibold">Prev. Ben.</th>
+                                <th class="border border-gray-300 px-3 py-2"></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($rows as $index => $row)
                                 <tr class="hover:bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-700 bg-gray-100">{{ $row['row'] }}</td>
                                     <td class="border border-gray-300 px-2 py-2">
                                         <input type="text" wire:model.live="rows.{{ $index }}.lrn" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2">
                                         <input type="text" wire:model.live="rows.{{ $index }}.grade" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                    </td>
+                                    <td class="border border-gray-300 px-2 py-2">
+                                        <input type="text" wire:model.live="rows.{{ $index }}.section" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2">
                                         <input type="text" wire:model.live="rows.{{ $index }}.last_name" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
@@ -112,11 +122,17 @@
                                     <td class="border border-gray-300 px-2 py-2 text-center">
                                         <input type="checkbox" wire:model.live="rows.{{ $index }}.pardo" class="rounded border-gray-400 text-blue-600">
                                     </td>
-                                    <td class="border border-gray-300 px-2 py-2 text-center">
+                                    <td class="border border-gray-300 py-2 text-center">
                                         <input type="checkbox" wire:model.live="rows.{{ $index }}.dewormed" class="rounded border-gray-400 text-blue-600">
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2 text-center">
                                         <input type="checkbox" wire:model.live="rows.{{ $index }}.sbfp_previous_beneficiary" class="rounded border-gray-400 text-blue-600">
+                                    </td>
+                                    <td class="border border-gray-300 px-2 py-2 text-center">
+                                        <button wire:click="deleteRow({{ $index }})" wire:confirm="Remove this row?" type="button"
+                                            class="inline-flex items-center justify-center w-6 h-6 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
                                     </td>
                                 </tr>
                             @endforeach

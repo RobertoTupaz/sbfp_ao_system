@@ -42,6 +42,10 @@ Route::view('/generate/reports', 'generateReports')
     ->middleware(['auth'])
     ->name('generate_reports');
 
+Route::view('/analytics', 'analytics')
+    ->middleware(['auth', 'verified'])
+    ->name('analytics');
+
 Route::get('/run-nutritional-seeder', [App\Http\Controllers\Controller::class, 'nsSeeder'])->name('run.nutritional.seeder');
 
 require __DIR__ . '/auth.php';

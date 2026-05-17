@@ -140,13 +140,14 @@ class Base extends Component
             return;
         }
 
-        // convert centimeters back to meters before saving
-        $pupil->height = $this->editingHeight !== null ? ($this->editingHeight / 100) : null;
+        $heightCm = $this->editingHeight !== null ? (float) $this->editingHeight : null;
+        $heightM  = $heightCm !== null ? $heightCm / 100 : null;
+
         $pupil->weight = $this->editingWeight;
-        $pupil->bmi = ($pupil->height && $pupil->weight) ? ($pupil->weight / ($pupil->height * $pupil->height)) : null;
+        $pupil->height = $heightCm;
+        $pupil->bmi = ($heightM && $pupil->weight) ? ($pupil->weight / ($heightM * $heightM)) : null;
         $pupil->nutritional_status = $this->getBMIStatus($pupil->bmi, $pupil);
-        $pupil->height_for_age = $this->getHFAStatus();
-        $pupil->height = $pupil->height * 100;
+        $pupil->height_for_age = $this->getHFAStatus($pupil);
         $pupil->save();
 
         session()->flash('success', 'Pupil updated');

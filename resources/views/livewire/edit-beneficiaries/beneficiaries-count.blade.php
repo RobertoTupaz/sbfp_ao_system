@@ -1,3 +1,5 @@
+<div>
+@unless($beneficiariesSet)
 <div class="mb-4">
     <label class="block text-sm font-medium text-gray-700 mb-2">Beneficiaries count</label>
     <div class="flex gap-2 items-center max-w-sm">
@@ -7,4 +9,6 @@
             class="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
     </div>
     <div class="text-sm text-gray-500 mt-2">Set number of beneficiaries for the generated forms</div>
+</div>
+@endunless
 </div>

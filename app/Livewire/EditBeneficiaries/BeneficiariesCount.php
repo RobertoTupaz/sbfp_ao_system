@@ -4,11 +4,13 @@ namespace App\Livewire\EditBeneficiaries;
 
 use App\Models\Beneficiaries;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class BeneficiariesCount extends Component
 {
     public $beneficiariesCount;
+    public $beneficiariesSet = false;
 
     public function mount()
     {
@@ -17,6 +19,12 @@ class BeneficiariesCount extends Component
     public function render()
     {
         return view('livewire.edit-beneficiaries.beneficiaries-count');
+    }
+
+    #[On('primary_secondary_saved')]
+    public function onBeneficiariesSet()
+    {
+        $this->beneficiariesSet = true;
     }
 
     public function saveBeneficiariesCount()

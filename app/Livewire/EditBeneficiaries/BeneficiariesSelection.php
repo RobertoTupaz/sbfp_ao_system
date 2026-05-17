@@ -3,12 +3,14 @@
 namespace App\Livewire\EditBeneficiaries;
 
 use App\Models\NutritionalStatus;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use App\Models\PrimarySecondaryBeneficiaries;
 use Illuminate\Support\Facades\Log;
 
 class BeneficiariesSelection extends Component
 {
+    public $beneficiariesSet = false;
     public $allBeneficiaries;
     public $primary_name;
     public $primary_all_kinder;
@@ -143,6 +145,7 @@ class BeneficiariesSelection extends Component
             }
         }
         if ($secondarySave) {
+            $this->beneficiariesSet = true;
             $this->dispatch('beneficiaries-saved', ['message' => 'Beneficiaries saved.']);
         }
     }

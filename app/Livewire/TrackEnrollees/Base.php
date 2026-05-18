@@ -137,6 +137,35 @@ class Base extends Component
         $this->loadGradeCounts();
     }
 
+    public function deleteSection()
+    {
+        if (!$this->selectedGrade || $this->selectedSection === null) {
+            session()->flash('error', 'No section selected');
+            return;
+        }
+
+        $query = NutritionalStatus::query()->where('grade', $this->selectedGrade);
+        if ($this->selectedSection === '' || is_null($this->selectedSection)) {
+            $query->where(function ($q) {
+                $q->whereNull('section')->orWhere('section', '');
+            });
+        } else {
+            $query->where('section', $this->selectedSection);
+        }
+
+        $ids = $query->pluck('id');
+        SwappedPupils::whereIn('old_pupil_id', $ids)->orWhereIn('new_pupil_id', $ids)->delete();
+        NutritionalStatus::whereIn('id', $ids)->delete();
+
+        $sectionLabel = $this->selectedSection ?: 'Unspecified';
+        session()->flash('success', "Section \"{$sectionLabel}\" deleted");
+
+        $this->selectedSection = null;
+        $this->students = [];
+        $this->loadSectionCounts($this->selectedGrade);
+        $this->loadGradeCounts();
+    }
+
     public function deletePupil($studentId)
     {
         $pupil = NutritionalStatus::find($studentId);

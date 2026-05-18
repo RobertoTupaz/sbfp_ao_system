@@ -3,6 +3,7 @@
 namespace App\Livewire\TrackEnrollees;
 
 use App\Models\HfaSimplifiedVersion;
+use App\Models\SwappedPupils;
 use Carbon\Carbon;
 use Livewire\Component;
 use App\Models\NutritionalStatus;
@@ -40,10 +41,21 @@ class Base extends Component
             ->pluck('total', 'grade')
             ->toArray();
 
-        // ensure all grades exist in the array
+        $noHwCounts = NutritionalStatus::query()
+            ->select('grade', DB::raw('count(*) as total'))
+            ->whereIn('grade', $grades)
+            ->whereNull('height')
+            ->whereNull('weight')
+            ->groupBy('grade')
+            ->pluck('total', 'grade')
+            ->toArray();
+
         $this->gradeCounts = [];
         foreach ($grades as $g) {
-            $this->gradeCounts[$g] = isset($counts[$g]) ? (int)$counts[$g] : 0;
+            $this->gradeCounts[$g] = [
+                'total' => isset($counts[$g]) ? (int)$counts[$g] : 0,
+                'no_hw' => isset($noHwCounts[$g]) ? (int)$noHwCounts[$g] : 0,
+            ];
         }
     }
 
@@ -57,14 +69,23 @@ class Base extends Component
             ->orderBy('section')
             ->get();
 
-        // store entries as arrays with actual section value and display label
-        $this->sectionCounts = $sections->map(function ($row) {
+        $noHwCounts = NutritionalStatus::query()
+            ->select('section', DB::raw('count(*) as total'))
+            ->where('grade', $grade)
+            ->whereNull('height')
+            ->whereNull('weight')
+            ->groupBy('section')
+            ->pluck('total', 'section')
+            ->toArray();
+
+        $this->sectionCounts = $sections->map(function ($row) use ($noHwCounts) {
             $sectionValue = $row->section;
             $label = $sectionValue ?: 'Unspecified';
             return [
                 'section' => $sectionValue,
                 'label' => $label,
                 'count' => (int)$row->total,
+                'no_hw' => isset($noHwCounts[$sectionValue]) ? (int)$noHwCounts[$sectionValue] : 0,
             ];
         })->toArray();
         // clear any previously loaded students
@@ -104,6 +125,7 @@ class Base extends Component
 
     public function deleteAllPupils()
     {
+        SwappedPupils::query()->delete();
         NutritionalStatus::query()->delete();
         session()->flash('success', 'All pupils deleted');
 
@@ -123,6 +145,9 @@ class Base extends Component
             return;
         }
 
+        SwappedPupils::where('old_pupil_id', $pupil->id)
+            ->orWhere('new_pupil_id', $pupil->id)
+            ->delete();
         $pupil->delete();
         session()->flash('success', 'Pupil deleted');
 

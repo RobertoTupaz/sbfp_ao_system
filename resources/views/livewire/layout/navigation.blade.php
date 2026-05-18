@@ -32,6 +32,12 @@ new class extends Component {
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                        <x-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')"
+                            wire:navigate>
+                            {{ __('Track Enrollees') }}
+                        </x-nav-link>
+                    @endif
                     @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                         <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
                             wire:navigate>
@@ -45,12 +51,6 @@ new class extends Component {
                     @if(auth()->check() && !in_array(auth()->user()->role, ['user','users','ao']))
                         <x-nav-link :href="route('generate_reports')" :active="request()->routeIs('generate_reports')" wire:navigate>
                             {{ __('Generate Reports') }}
-                        </x-nav-link>
-                    @endif
-                    @if(!(auth()->check() && auth()->user()->role === 'focal'))
-                        <x-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')"
-                            wire:navigate>
-                            {{ __('Track Enrollees') }}
                         </x-nav-link>
                     @endif
                     <x-nav-link :href="route('analytics')" :active="request()->routeIs('analytics')" wire:navigate>
@@ -116,6 +116,11 @@ new class extends Component {
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+                @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                    <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
+                        {{ __('Track Enrollees') }}
+                    </x-responsive-nav-link>
+                @endif
                 @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                     <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
                         {{ __('Edit Beneficiaries') }}
@@ -127,11 +132,6 @@ new class extends Component {
                 @if(auth()->check() && !in_array(auth()->user()->role, ['user','users','ao']))
                     <x-responsive-nav-link :href="route('generate_reports')" :active="request()->routeIs('generate_reports')" wire:navigate>
                         {{ __('Generate Reports') }}
-                    </x-responsive-nav-link>
-                @endif
-                @if(!(auth()->check() && auth()->user()->role === 'focal'))
-                    <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
-                        {{ __('Track Enrollees') }}
                     </x-responsive-nav-link>
                 @endif
                 <x-responsive-nav-link :href="route('analytics')" :active="request()->routeIs('analytics')" wire:navigate>

@@ -38,8 +38,13 @@
                             : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50' }}">
                     <span>{{ $grade === 'k' ? 'Kinder' : ($grade === 'non_graded' ? 'Non-graded' : 'Grade '.$grade) }}</span>
                     <span class="text-xs mt-0.5 {{ $selectedGrade === (string)$grade ? 'text-blue-100' : 'text-gray-400' }}">
-                        {{ $count }}
+                        {{ $count['total'] }}
                     </span>
+                    @if($count['no_hw'] > 0)
+                        <span class="text-xs mt-0.5 {{ $selectedGrade === (string)$grade ? 'text-orange-200' : 'text-orange-500' }}">
+                            {{ $count['no_hw'] }} no H&amp;W
+                        </span>
+                    @endif
                 </button>
             @endforeach
 
@@ -92,6 +97,12 @@
                             {{ (string)$selectedSection === (string)$entry['section'] ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-500' }}">
                             {{ $entry['count'] }}
                         </span>
+                        @if($entry['no_hw'] > 0)
+                            <span class="px-1.5 py-0.5 rounded-full text-xs
+                                {{ (string)$selectedSection === (string)$entry['section'] ? 'bg-orange-400 text-white' : 'bg-orange-100 text-orange-600' }}">
+                                {{ $entry['no_hw'] }} no H&amp;W
+                            </span>
+                        @endif
                     </button>
                 @endforeach
             </div>
@@ -129,7 +140,7 @@
                         @foreach($students as $i => $stu)
                             @if($editingStudent === $stu['id'])
                                 {{-- Edit row --}}
-                                <tr class="bg-blue-50">
+                                <tr class="bg-blue-50" wire:key="edit-{{ $stu['id'] }}">
                                     <td class="px-4 py-3 text-gray-400">{{ $i + 1 }}</td>
                                     <td class="px-4 py-3 font-medium text-gray-800">
                                         {{ $stu['full_name'] ?? trim(($stu['last_name'] ?? '').' '.($stu['first_name'] ?? '')) }}
@@ -189,7 +200,7 @@
                                 </tr>
                             @else
                                 {{-- Normal row --}}
-                                <tr class="hover:bg-gray-50 transition-colors">
+                                <tr class="hover:bg-gray-50 transition-colors" wire:key="row-{{ $stu['id'] }}">
                                     <td class="px-4 py-3 text-gray-400">{{ $i + 1 }}</td>
                                     <td class="px-4 py-3 font-medium text-gray-800">
                                         {{ $stu['full_name'] ?? trim(($stu['last_name'] ?? '').' '.($stu['first_name'] ?? '')) }}

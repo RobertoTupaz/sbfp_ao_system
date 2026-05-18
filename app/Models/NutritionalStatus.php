@@ -33,6 +33,7 @@ class NutritionalStatus extends Model
         'dewormed',
         'parent_consent_milk',
         'sbfp_previous_beneficiary',
+        'isBeneficiary',
     ];
 
     protected $casts = [
@@ -49,5 +50,6 @@ class NutritionalStatus extends Model
         'dewormed' => 'boolean',
         'parent_consent_milk' => 'boolean',
         'sbfp_previous_beneficiary' => 'boolean',
+        'isBeneficiary' => 'boolean',
     ];
 }

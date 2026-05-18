@@ -17,6 +17,14 @@ class Base extends Component
     public $hfaCounts               = [];
     public $gradeCounts             = [];
 
+    public $beneficiaryMaleCount        = 0;
+    public $beneficiaryFemaleCount      = 0;
+    public $beneficiaryNsCounts         = [];
+    public $beneficiaryGradeCounts      = [];
+    public $beneficiary4psCount         = 0;
+    public $beneficiaryIpCount          = 0;
+    public $beneficiaryPardoCount       = 0;
+
     public function mount()
     {
         $this->loadStats();
@@ -59,6 +67,37 @@ class Base extends Component
         $this->gradeCounts = [];
         foreach ($grades as $g) {
             $this->gradeCounts[$g] = $counts[$g] ?? 0;
+        }
+
+        $benQ = NutritionalStatus::where('isBeneficiary', true);
+
+        $this->beneficiaryMaleCount   = (clone $benQ)->whereIn('sex', ['m', 'M', 'male', 'Male'])->count();
+        $this->beneficiaryFemaleCount = (clone $benQ)->whereIn('sex', ['f', 'F', 'female', 'Female'])->count();
+        $this->beneficiary4psCount    = (clone $benQ)->where('_4ps', true)->count();
+        $this->beneficiaryIpCount     = (clone $benQ)->where('ip', true)->count();
+        $this->beneficiaryPardoCount  = (clone $benQ)->where('pardo', true)->count();
+
+        $this->beneficiaryNsCounts = NutritionalStatus::query()
+            ->where('isBeneficiary', true)
+            ->select('nutritional_status', DB::raw('count(*) as total'))
+            ->whereNotNull('nutritional_status')
+            ->where('nutritional_status', '!=', '')
+            ->groupBy('nutritional_status')
+            ->orderByDesc('total')
+            ->pluck('total', 'nutritional_status')
+            ->toArray();
+
+        $benGradeCounts = NutritionalStatus::query()
+            ->where('isBeneficiary', true)
+            ->select('grade', DB::raw('count(*) as total'))
+            ->whereIn('grade', $grades)
+            ->groupBy('grade')
+            ->pluck('total', 'grade')
+            ->toArray();
+
+        $this->beneficiaryGradeCounts = [];
+        foreach ($grades as $g) {
+            $this->beneficiaryGradeCounts[$g] = $benGradeCounts[$g] ?? 0;
         }
     }
 

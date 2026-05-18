@@ -117,6 +117,7 @@ class BeneficiariesSelection extends Component
             $primary->save();
         }
 
+        $secondarySave = false;
         $secondary = PrimarySecondaryBeneficiaries::where('name', 'Secondary')->first();
         if ($secondary) {
             $secondarySave = $secondary->update([

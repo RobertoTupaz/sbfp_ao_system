@@ -3,6 +3,7 @@
 namespace App\Livewire\TrackEnrollees;
 
 use App\Models\HfaSimplifiedVersion;
+use Carbon\Carbon;
 use Livewire\Component;
 use App\Models\NutritionalStatus;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +104,7 @@ class Base extends Component
 
     public function deleteAllPupils()
     {
-        NutritionalStatus::truncate();
+        NutritionalStatus::query()->delete();
         session()->flash('success', 'All pupils deleted');
 
         $this->selectedGrade = null;
@@ -170,6 +171,17 @@ class Base extends Component
             $this->cancelEdit();
             return;
         }
+
+        // Recalculate age to today before computing BMI / HFA
+        if ($pupil->birthday) {
+            $dob  = Carbon::parse($pupil->birthday);
+            $now  = Carbon::now();
+            $years  = $dob->diffInYears($now);
+            $months = $dob->diffInMonths($now) - ($years * 12);
+            $pupil->age_years  = $years;
+            $pupil->age_months = $months;
+        }
+        $pupil->date_of_weighing = Carbon::today()->toDateString();
 
         $heightCm = $this->editingHeight !== null ? (float) $this->editingHeight : null;
         $heightM  = $heightCm !== null ? $heightCm / 100 : null;

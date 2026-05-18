@@ -163,7 +163,7 @@ class Focal extends Component
                         'date_of_weighing_or_measuring' => $this->parseDate($cells[6] ?? null),
                         'age_in_years' => isset($cells[7]) && $cells[7] !== '' ? (int)$cells[7] : null,
                         'age_in_months' => isset($cells[8]) && $cells[8] !== '' ? (int)$cells[8] : null,
-                        'weight' => isset($cells[9]) && $cells[9] !== '' ? (int)$cells[9] : null,
+                        'weight' => isset($cells[9]) && $cells[9] !== '' ? (float)$cells[9] : null,
                         'height' => isset($cells[10]) && $cells[10] !== '' ? (float)$cells[10] : null,
                         'bmi_for_6_years_and_above' => isset($cells[11]) ? trim((string)$cells[11]) : null,
                         'bmi_a' => isset($cells[12]) ? trim((string)$cells[12]) : null,

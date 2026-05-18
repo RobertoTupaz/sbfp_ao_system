@@ -14,7 +14,7 @@ class BeneficiariesCount extends Component
 
     public function mount()
     {
-        $this->beneficiariesCount = Beneficiaries::first()->beneficiaries_count;
+        $this->beneficiariesCount = Beneficiaries::first()?->beneficiaries_count ?? 0;
     }
     public function render()
     {

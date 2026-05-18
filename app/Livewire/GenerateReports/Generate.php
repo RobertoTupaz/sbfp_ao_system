@@ -63,9 +63,7 @@ class Generate extends Component
                 'pardo',
                 'dewormed',
                 'beneficiary_of_sbfp_in_previous_year',
-            ])
-            ->where('survey_state', $this->selectedStateGlobal ?: session('focal_selected_state', ''))
-            ->where('school_year', $this->selectedYear ?: session('focal_selected_year', ''));
+            ]);
 
         if ($state !== '') {
             $query->where('survey_state', $state);

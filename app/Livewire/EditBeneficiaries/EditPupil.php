@@ -86,58 +86,53 @@ class EditPupil extends Component
         $this->sbfp_previous_beneficiary = (bool)$pupil->sbfp_previous_beneficiary;
     }
 
+    protected function recalculateAge(): void
+    {
+        if (!$this->date_of_birth) return;
+
+        $weighDate = $this->date_of_weighing
+            ? Carbon::parse($this->date_of_weighing)
+            : Carbon::now();
+        $dob = Carbon::parse($this->date_of_birth);
+
+        $this->age_years  = $dob->diffInYears($weighDate);
+        $this->age_months = $dob->diffInMonths($weighDate) - ($this->age_years * 12);
+    }
+
     public function getHFA()
     {
-        $ageInMonths = $this->age_months + ($this->age_years * 12);
-        $height    = $this->height;
-        $gender    = $this->sex == 'm' ? 'male' : 'female';
+        $ageInMonths = (($this->age_years ?? 0) * 12) + ($this->age_months ?? 0);
+        $height      = $this->height;
+        $gender      = $this->sex == 'm' ? 'male' : 'female';
 
         $hfa = HfaSimplifiedVersion::where('month', $ageInMonths)
             ->where('gender', $gender)
             ->first();
 
-        if (!$hfa) {
-            return;
-        }
-
-        $status = "";
+        if (!$hfa) return;
 
         if ($height < $hfa->less_negative_3sd) {
-            $status = 'Severely Stunted';
+            $this->height_for_age = 'Severely Stunted';
         } elseif ($height <= $hfa->to_less_negative_2sd) {
-            $status = 'Stunted';
+            $this->height_for_age = 'Stunted';
         } elseif ($height <= $hfa->to_positive_2sd) {
-            $status = 'Normal';
+            $this->height_for_age = 'Normal';
         } else {
-            $status = 'Tall';
+            $this->height_for_age = 'Tall';
         }
-        $this->height_for_age = $status;
     }
 
     public function getBMI()
     {
-        // compute age_years and age_months from birthday + weighing date when possible
-        if ($this->date_of_birth) {
-            $weighDate = $this->date_of_weighing ? Carbon::parse($this->date_of_weighing) : Carbon::now();
-            $dob = Carbon::parse($this->date_of_birth);
-            $years = $dob->diffInYears($weighDate);
-            $months = $dob->diffInMonths($weighDate) - ($years * 12);
-            $this->age_years = $years;
-            $this->age_months = $months;
-        }
-
-        // ensure BMI is calculated if possible
-        if (empty($this->bmi)) {
-            if ($this->weight && $this->height) {
-                $h = $this->height / 100.0;
-                if ($h > 0) {
-                    $bmi = $this->weight / ($h * $h);
-                    $this->bmi = round($bmi, 2);
-                }
+        // Always recalculate BMI from current height/weight
+        if ($this->weight && $this->height) {
+            $h = $this->height / 100.0;
+            if ($h > 0) {
+                $this->bmi = round($this->weight / ($h * $h), 2);
             }
         }
 
-        $ageInMonths = ($this->age_years ?: 0) * 12 + ($this->age_months ?: 0);
+        $ageInMonths = (($this->age_years ?? 0) * 12) + ($this->age_months ?? 0);
         $bmi = $this->bmi;
         $gender = $this->sex == 'm' ? 'm' : 'f';
 
@@ -190,20 +185,12 @@ class EditPupil extends Component
     {
         $this->validate();
 
-        // compute age_years and age_months from birthday + weighing date when possible
-        if ($this->date_of_birth) {
-            $weighDate = $this->date_of_weighing ? Carbon::parse($this->date_of_weighing) : Carbon::now();
-            $dob = Carbon::parse($this->date_of_birth);
-            $years = $dob->diffInYears($weighDate);
-            $months = $dob->diffInMonths($weighDate) - ($years * 12);
-            $this->age_years = $years;
-            $this->age_months = $months;
-        }
-
         $fullName = trim("{$this->last_name}, {$this->first_name} {$this->suffix_name}");
         $fullName = preg_replace('/,\s*$/', '', $fullName);
-        $this->getHFA(); // compute height_for_age before saving
-        $this->getBMI(); // compute nutritional_status before saving (DB fallback)
+
+        $this->recalculateAge();
+        $this->getHFA();
+        $this->getBMI();
         $data = [
             'full_name' => $fullName,
             'first_name' => $this->first_name,

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\xampp\\\\htdocs\\\\sbfp_ao_system\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(php *)"
+    ]
+  }
+}

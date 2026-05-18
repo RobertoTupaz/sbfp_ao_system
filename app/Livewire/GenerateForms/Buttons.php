@@ -3,6 +3,7 @@
 namespace App\Livewire\GenerateForms;
 
 use App\Models\Beneficiaries;
+use App\Models\SwappedPupils;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\NutritionalStatus;
@@ -40,7 +41,7 @@ class Buttons extends Component
             $sheet = $spreadsheet->getActiveSheet();
 
             $sheet->setCellValueByColumnAndRow(1, 8, "Name of School / School District : " . (auth()->user()->school->school_name ?? '') . " - " . (auth()->user()->school->district ?? ''));
-            $sheet->setCellValueByColumnAndRow(1, 9, "School  ID Number: " . auth()->user()->school->school_id ?? '');
+            $sheet->setCellValueByColumnAndRow(1, 9, "School  ID Number: " . (auth()->user()->school?->school_id ?? ''));
 
             // starting row in the template
             $startRow = 13;
@@ -48,6 +49,15 @@ class Buttons extends Component
 
             // fetch records from database
             $records = NutritionalStatus::where("isBeneficiary", "=", true)->orderBy('grade')->get();
+
+            // Map new_pupil_id → "removed pupil name - reason" for remarks column
+            $swapRemarks = SwappedPupils::query()
+                ->join('nutritional_statuses as old', 'swapped_pupils.old_pupil_id', '=', 'old.id')
+                ->select('swapped_pupils.new_pupil_id', 'old.full_name as old_name', 'swapped_pupils.reason')
+                ->get()
+                ->keyBy('new_pupil_id')
+                ->map(fn($row) => trim($row->old_name . ($row->reason ? ' - ' . $row->reason : '')))
+                ->toArray();
 
             foreach ($records as $index => $rec) {
                 $row = $startRow + $index;
@@ -83,6 +93,9 @@ class Buttons extends Component
                 $sheet->setCellValueByColumnAndRow(24, $row, $rec->first_name ?? '');
                 $sheet->setCellValueByColumnAndRow(25, $row, $rec->last_name ?? '');
                 $sheet->setCellValueByColumnAndRow(26, $row, $rec->suffix_name ?? '');
+
+                // Column 21 — Remarks: name of the removed pupil this beneficiary replaced
+                $sheet->setCellValueByColumnAndRow(21, $row, $swapRemarks[$rec->id] ?? '');
 
                 $endRow = $row;
             }
@@ -150,750 +163,214 @@ class Buttons extends Component
         }
 
         try {
-            // load the existing spreadsheet
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
             $sheet = $spreadsheet->getActiveSheet();
 
-            // Build per-grade aggregates: kinder (k), grades 1..12, and non_graded
-            $grades = array_merge(['k'], range(1, 12), ['non_graded']);
-            $gradeStats = [];
+            $allGrades    = array_merge(['k'], array_map('strval', range(1, 12)), ['non_graded']);
+            $subsetGrades = array_merge(['k'], array_map('strval', range(1, 6)), ['non_graded']);
 
-            foreach ($grades as $grade) {
-                $g = (string) $grade;
-                $gradeStats[$g] = NutritionalStatus::where('grade', $g)
-                    ->where('isBeneficiary', true)
-                    ->selectRaw('
-                        COUNT(*) as total,
-                        SUM(sex = "m") as total_m,
-                        SUM(sex = "f") as total_f,
+            $zero = (object) [
+                'total' => 0, 'total_m' => 0, 'total_f' => 0,
+                'severely_wasted_m' => 0, 'severely_wasted_f' => 0,
+                'wasted_m' => 0, 'wasted_f' => 0,
+                'severely_stunted_m' => 0, 'severely_stunted_f' => 0,
+                'stunted_m' => 0, 'stunted_f' => 0,
+                'ip_m' => 0, 'ip_f' => 0,
+                'fourPs_m' => 0, 'fourPs_f' => 0,
+                'pardo_m' => 0, 'pardo_f' => 0,
+                'all_normal_m' => 0, 'all_normal_f' => 0,
+                'sw_m' => 0, 'sw_f' => 0,
+                'normal_m' => 0, 'normal_f' => 0,
+                'overweight_m' => 0, 'overweight_f' => 0,
+                'obese_m' => 0, 'obese_f' => 0,
+                'ss_m' => 0, 'ss_f' => 0,
+                'hfa_normal_m' => 0, 'hfa_normal_f' => 0,
+                'tall_m' => 0, 'tall_f' => 0,
+                'male' => 0, 'female' => 0,
+                'dewormed_m' => 0, 'dewormed_f' => 0,
+                'fourps_m' => 0, 'fourps_f' => 0,
+                'prev_ben_m' => 0, 'prev_ben_f' => 0,
+            ];
 
-                        SUM(sex = "m" AND nutritional_status = "severely wasted") as severely_wasted_m,
-                        SUM(sex = "f" AND nutritional_status = "severely wasted") as severely_wasted_f,
+            // Query 1 — all 14 grades: priority-category breakdown
+            $gsRaw = NutritionalStatus::where('isBeneficiary', true)
+                ->whereIn('grade', $allGrades)
+                ->selectRaw("
+                    grade,
+                    COUNT(*) as total,
+                    SUM(sex='m') as total_m, SUM(sex='f') as total_f,
+                    SUM(sex='m' AND nutritional_status='severely wasted') as severely_wasted_m,
+                    SUM(sex='f' AND nutritional_status='severely wasted') as severely_wasted_f,
+                    SUM(sex='m' AND nutritional_status='wasted') as wasted_m,
+                    SUM(sex='f' AND nutritional_status='wasted') as wasted_f,
+                    SUM(sex='m' AND height_for_age='severely stunted' AND nutritional_status IN ('normal','overweight','obese')) as severely_stunted_m,
+                    SUM(sex='f' AND height_for_age='severely stunted' AND nutritional_status IN ('normal','overweight','obese')) as severely_stunted_f,
+                    SUM(sex='m' AND height_for_age='stunted' AND nutritional_status IN ('normal','overweight','obese')) as stunted_m,
+                    SUM(sex='f' AND height_for_age='stunted' AND nutritional_status IN ('normal','overweight','obese')) as stunted_f,
+                    SUM(sex='m' AND ip=1 AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as ip_m,
+                    SUM(sex='f' AND ip=1 AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as ip_f,
+                    SUM(sex='m' AND _4ps=1 AND ip=0 AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as fourPs_m,
+                    SUM(sex='f' AND _4ps=1 AND ip=0 AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as fourPs_f,
+                    SUM(sex='m' AND pardo=1 AND _4ps=0 AND ip=0 AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as pardo_m,
+                    SUM(sex='f' AND pardo=1 AND _4ps=0 AND ip=0 AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as pardo_f,
+                    SUM(sex='m' AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as all_normal_m,
+                    SUM(sex='f' AND nutritional_status IN ('normal','overweight','obese') AND height_for_age IN ('normal','tall')) as all_normal_f
+                ")
+                ->groupBy('grade')->get()->keyBy('grade');
 
-                        SUM(sex = "m" AND nutritional_status = "wasted") as wasted_m,
-                        SUM(sex = "f" AND nutritional_status = "wasted") as wasted_f,
+            $gs = [];
+            foreach ($allGrades as $g) { $gs[$g] = $gsRaw->get($g) ?? $zero; }
 
-                        SUM(sex = "m" AND height_for_age = "severely stunted" AND nutritional_status IN ("normal","overweight","obese")) as severely_stunted_m,
-                        SUM(sex = "f" AND height_for_age = "severely stunted" AND nutritional_status IN ("normal","overweight","obese")) as severely_stunted_f,
+            // Query 2 — subset grades: NS + HFA + counts all in one pass
+            $subRaw = NutritionalStatus::where('isBeneficiary', true)
+                ->whereIn('grade', $subsetGrades)
+                ->selectRaw("
+                    grade,
+                    SUM(sex='m') as male, SUM(sex='f') as female, COUNT(*) as total,
+                    SUM(sex='m' AND nutritional_status='severely wasted') as sw_m,
+                    SUM(sex='f' AND nutritional_status='severely wasted') as sw_f,
+                    SUM(sex='m' AND nutritional_status='wasted') as wasted_m,
+                    SUM(sex='f' AND nutritional_status='wasted') as wasted_f,
+                    SUM(sex='m' AND nutritional_status='normal') as normal_m,
+                    SUM(sex='f' AND nutritional_status='normal') as normal_f,
+                    SUM(sex='m' AND nutritional_status='overweight') as overweight_m,
+                    SUM(sex='f' AND nutritional_status='overweight') as overweight_f,
+                    SUM(sex='m' AND nutritional_status='obese') as obese_m,
+                    SUM(sex='f' AND nutritional_status='obese') as obese_f,
+                    SUM(sex='m' AND height_for_age='severely stunted') as ss_m,
+                    SUM(sex='f' AND height_for_age='severely stunted') as ss_f,
+                    SUM(sex='m' AND height_for_age='stunted') as stunted_m,
+                    SUM(sex='f' AND height_for_age='stunted') as stunted_f,
+                    SUM(sex='m' AND height_for_age='normal') as hfa_normal_m,
+                    SUM(sex='f' AND height_for_age='normal') as hfa_normal_f,
+                    SUM(sex='m' AND height_for_age='tall') as tall_m,
+                    SUM(sex='f' AND height_for_age='tall') as tall_f,
+                    SUM(sex='m' AND dewormed=1) as dewormed_m,
+                    SUM(sex='f' AND dewormed=1) as dewormed_f,
+                    SUM(sex='m' AND _4ps=1) as fourps_m,
+                    SUM(sex='f' AND _4ps=1) as fourps_f,
+                    SUM(sex='m' AND sbfp_previous_beneficiary=1) as prev_ben_m,
+                    SUM(sex='f' AND sbfp_previous_beneficiary=1) as prev_ben_f
+                ")
+                ->groupBy('grade')->get()->keyBy('grade');
 
-                        SUM(sex = "m" AND height_for_age = "stunted" AND nutritional_status IN ("normal","overweight","obese")) as stunted_m,
-                        SUM(sex = "f" AND height_for_age = "stunted" AND nutritional_status IN ("normal","overweight","obese")) as stunted_f,
+            $sub = [];
+            foreach ($subsetGrades as $g) { $sub[$g] = $subRaw->get($g) ?? $zero; }
 
-                        SUM(sex = "m" AND ip = 1 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as ip_m,
-                        SUM(sex = "f" AND ip = 1 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as ip_f,
+            // ── Table 1: SBFP Coverage by Grade ──────────────────────────────
+            // Closure writes one copy; called 3 times with different row offsets.
+            // Base rows: kinder=18/19, grade1=21/22, grades2-6/NG step by 3.
+            // Duplicate 1 starts at row 54  → offset 36
+            // Duplicate 2 starts at row 157 → offset 139
+            $writeCoverageTable = function (int $offset) use ($sheet, $gs) {
+                $k = $gs['k'];
+                $sheet->setCellValueByColumnAndRow(10, 18 + $offset, $k->all_normal_m);
+                $sheet->setCellValueByColumnAndRow(10, 19 + $offset, $k->all_normal_f);
+                $sheet->setCellValueByColumnAndRow(14, 18 + $offset, $k->severely_wasted_m);
+                $sheet->setCellValueByColumnAndRow(14, 19 + $offset, $k->severely_wasted_f);
+                $sheet->setCellValueByColumnAndRow(18, 18 + $offset, $k->wasted_m);
+                $sheet->setCellValueByColumnAndRow(18, 19 + $offset, $k->wasted_f);
+                $sheet->setCellValueByColumnAndRow(22, 18 + $offset, $k->severely_stunted_m + $k->stunted_m);
+                $sheet->setCellValueByColumnAndRow(22, 19 + $offset, $k->severely_stunted_f + $k->stunted_f);
 
-                        SUM(sex = "m" AND _4ps = 1 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as fourPs_m,
-                        SUM(sex = "f" AND _4ps = 1 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as fourPs_f,
+                $g1 = $gs['1'];
+                $sheet->setCellValueByColumnAndRow(10, 21 + $offset, $g1->total_m - ($g1->severely_wasted_m + $g1->wasted_m + $g1->severely_stunted_m + $g1->stunted_m + $g1->pardo_m + $g1->ip_m + $g1->fourPs_m));
+                $sheet->setCellValueByColumnAndRow(10, 22 + $offset, $g1->total_f - ($g1->severely_wasted_f + $g1->wasted_f + $g1->severely_stunted_f + $g1->stunted_f + $g1->pardo_f + $g1->ip_f + $g1->fourPs_f));
+                $sheet->setCellValueByColumnAndRow(14, 21 + $offset, $g1->severely_wasted_m);
+                $sheet->setCellValueByColumnAndRow(14, 22 + $offset, $g1->severely_wasted_f);
+                $sheet->setCellValueByColumnAndRow(18, 21 + $offset, $g1->wasted_m);
+                $sheet->setCellValueByColumnAndRow(18, 22 + $offset, $g1->wasted_f);
+                $sheet->setCellValueByColumnAndRow(22, 21 + $offset, $g1->severely_stunted_m + $g1->stunted_m);
+                $sheet->setCellValueByColumnAndRow(22, 22 + $offset, $g1->severely_stunted_f + $g1->stunted_f);
+                $sheet->setCellValueByColumnAndRow(26, 21 + $offset, $g1->pardo_m);
+                $sheet->setCellValueByColumnAndRow(26, 22 + $offset, $g1->pardo_f);
+                $sheet->setCellValueByColumnAndRow(30, 21 + $offset, $g1->ip_m);
+                $sheet->setCellValueByColumnAndRow(30, 22 + $offset, $g1->ip_f);
+                $sheet->setCellValueByColumnAndRow(34, 21 + $offset, $g1->fourPs_m);
+                $sheet->setCellValueByColumnAndRow(34, 22 + $offset, $g1->fourPs_f);
 
-                        SUM(sex = "m" AND pardo = 1 AND _4ps = 0 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as pardo_m,
-                        SUM(sex = "f" AND pardo = 1 AND _4ps = 0 AND ip = 0 AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as pardo_f
-                    ')
-                    ->first();
-            }
-            // aggregated counts for kinder beneficiaries (separate male/female)
-            $kinderCounts = NutritionalStatus::where('grade', 'k')
-                ->where('isBeneficiary', true)
-                ->selectRaw('
-                    SUM(sex = "m" AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as all_kinder_m,
-                    SUM(sex = "f" AND nutritional_status IN ("normal","overweight","obese") AND height_for_age IN ("normal","tall")) as all_kinder_f
-                ')
-                ->first();
+                foreach (['2' => [24,25], '3' => [27,28], '4' => [30,31], '5' => [33,34], '6' => [36,37], 'non_graded' => [39,40]] as $g => [$rm, $rf]) {
+                    $s = $gs[$g];
+                    $sheet->setCellValueByColumnAndRow(14, $rm + $offset, $s->severely_wasted_m);
+                    $sheet->setCellValueByColumnAndRow(14, $rf + $offset, $s->severely_wasted_f);
+                    $sheet->setCellValueByColumnAndRow(18, $rm + $offset, $s->wasted_m);
+                    $sheet->setCellValueByColumnAndRow(18, $rf + $offset, $s->wasted_f);
+                    $sheet->setCellValueByColumnAndRow(22, $rm + $offset, $s->severely_stunted_m + $s->stunted_m);
+                    $sheet->setCellValueByColumnAndRow(22, $rf + $offset, $s->severely_stunted_f + $s->stunted_f);
+                    $sheet->setCellValueByColumnAndRow(26, $rm + $offset, $s->pardo_m);
+                    $sheet->setCellValueByColumnAndRow(26, $rf + $offset, $s->pardo_f);
+                    $sheet->setCellValueByColumnAndRow(30, $rm + $offset, $s->ip_m);
+                    $sheet->setCellValueByColumnAndRow(30, $rf + $offset, $s->ip_f);
+                    $sheet->setCellValueByColumnAndRow(34, $rm + $offset, $s->fourPs_m);
+                    $sheet->setCellValueByColumnAndRow(34, $rf + $offset, $s->fourPs_f);
+                }
+            };
 
-            $sheet->setCellValueByColumnAndRow(10, 18, $kinderCounts->all_kinder_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 19, $kinderCounts->all_kinder_f ?? 0);
+            $writeCoverageTable(0);    // original  — kinder row 18
+            $writeCoverageTable(36);   // duplicate 1 — kinder row 54
+            $writeCoverageTable(139);  // duplicate 2 — kinder row 157
 
-            $sheet->setCellValueByColumnAndRow(14, 18, $gradeStats['k']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 19, $gradeStats['k']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 18, $gradeStats['k']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 19, $gradeStats['k']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 18, $gradeStats['k']->severely_stunted_m + $gradeStats['k']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 19, $gradeStats['k']->severely_stunted_f + $gradeStats['k']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(14, 21, $gradeStats['1']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 22, $gradeStats['1']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 21, $gradeStats['1']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 22, $gradeStats['1']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 21, $gradeStats['1']->severely_stunted_m + $gradeStats['1']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 22, $gradeStats['1']->severely_stunted_f + $gradeStats['1']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 21, $gradeStats['1']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 22, $gradeStats['1']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 21, $gradeStats['1']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 22, $gradeStats['1']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 21, $gradeStats['1']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 22, $gradeStats['1']->fourPS_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(14, 24, $gradeStats['2']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 25, $gradeStats['2']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 24, $gradeStats['2']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 25, $gradeStats['2']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 24, $gradeStats['2']->severely_stunted_m + $gradeStats['2']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 25, $gradeStats['2']->severely_stunted_f + $gradeStats['2']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 24, $gradeStats['2']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 25, $gradeStats['2']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 24, $gradeStats['2']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 25, $gradeStats['2']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 24, $gradeStats['2']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 25, $gradeStats['2']->fourPS_f ?? 0);
-
-            //Grade 3
-            $sheet->setCellValueByColumnAndRow(14, 27, $gradeStats['3']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 28, $gradeStats['3']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 27, $gradeStats['3']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 28, $gradeStats['3']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 27, $gradeStats['3']->severely_stunted_m + $gradeStats['3']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 28, $gradeStats['3']->severely_stunted_f + $gradeStats['3']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 27, $gradeStats['3']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 28, $gradeStats['3']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 27, $gradeStats['3']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 28, $gradeStats['3']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 27, $gradeStats['3']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 28, $gradeStats['3']->fourPS_f ?? 0);
-
-            //Grade 4
-            $sheet->setCellValueByColumnAndRow(14, 30, $gradeStats['4']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 31, $gradeStats['4']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 30, $gradeStats['4']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 31, $gradeStats['4']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 30, $gradeStats['4']->severely_stunted_m + $gradeStats['4']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 31, $gradeStats['4']->severely_stunted_f + $gradeStats['4']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 30, $gradeStats['4']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 31, $gradeStats['4']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 30, $gradeStats['4']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 31, $gradeStats['4']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 30, $gradeStats['4']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 31, $gradeStats['4']->fourPS_f ?? 0);
-
-            //Grade 5
-            $sheet->setCellValueByColumnAndRow(14, 33, $gradeStats['5']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 34, $gradeStats['5']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 33, $gradeStats['5']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 34, $gradeStats['5']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 33, $gradeStats['5']->severely_stunted_m + $gradeStats['5']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 34, $gradeStats['5']->severely_stunted_f + $gradeStats['5']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 33, $gradeStats['5']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 34, $gradeStats['5']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 33, $gradeStats['5']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 34, $gradeStats['5']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 33, $gradeStats['5']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 34, $gradeStats['5']->fourPS_f ?? 0);
-
-            //Grade 6
-            $sheet->setCellValueByColumnAndRow(14, 36, $gradeStats['6']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 37, $gradeStats['6']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 36, $gradeStats['6']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 37, $gradeStats['6']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 36, $gradeStats['6']->severely_stunted_m + $gradeStats['6']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 37, $gradeStats['6']->severely_stunted_f + $gradeStats['6']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 36, $gradeStats['6']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 37, $gradeStats['6']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 36, $gradeStats['6']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 37, $gradeStats['6']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 36, $gradeStats['6']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 37, $gradeStats['6']->fourPS_f ?? 0);
-
-            //Non graded
-            $sheet->setCellValueByColumnAndRow(14, 39, $gradeStats['non_graded']->severely_wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(14, 40, $gradeStats['non_graded']->severely_wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(18, 39, $gradeStats['non_graded']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(18, 40, $gradeStats['non_graded']->wasted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(22, 39, $gradeStats['non_graded']->severely_stunted_m + $gradeStats['non_graded']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 40, $gradeStats['non_graded']->severely_stunted_f + $gradeStats['non_graded']->stunted_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(26, 39, $gradeStats['non_graded']->pardo_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(26, 40, $gradeStats['non_graded']->pardo_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(30, 39, $gradeStats['non_graded']->ip_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(30, 40, $gradeStats['non_graded']->ip_f ?? 0);
-
-            $sheet->setCellValueByColumnAndRow(34, 39, $gradeStats['non_graded']->fourPS_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(34, 40, $gradeStats['non_graded']->fourPS_f ?? 0);
-
-
-
-
-            // Create a query to get the nutritional status sum of kinder, grade 1 to grade 6 and non-graded,
-            // separate by sex and grade level.
-            $targetGrades = array_merge(['k'], range(1, 6), ['non_graded']);
-            $nutritionalSums = [];
-
-            foreach ($targetGrades as $grade) {
-                $g = (string) $grade;
-                $nutritionalSums[$g] = NutritionalStatus::where('grade', $g)
-                    ->where('isBeneficiary', true)
-                    ->selectRaw("
-                        SUM(sex = \"m\" AND nutritional_status = \"severely wasted\") as sw_m,
-                        SUM(sex = \"f\" AND nutritional_status = \"severely wasted\") as sw_f,
-
-                        SUM(sex = \"m\" AND nutritional_status = \"wasted\") as wasted_m,
-                        SUM(sex = \"f\" AND nutritional_status = \"wasted\") as wasted_f,
-
-                        SUM(sex = \"m\" AND nutritional_status = \"normal\") as normal_m,
-                        SUM(sex = \"f\" AND nutritional_status = \"normal\") as normal_f,
-
-                        SUM(sex = \"m\" AND nutritional_status = \"overweight\") as overweight_m,
-                        SUM(sex = \"f\" AND nutritional_status = \"overweight\") as overweight_f,
-
-                        SUM(sex = \"m\" AND nutritional_status = \"obese\") as obese_m,
-                        SUM(sex = \"f\" AND nutritional_status = \"obese\") as obese_f
-                    ")
-                    ->first();
+            // ── NS breakdown (rows 193-215) ──────────────────────────────────
+            foreach (['k' => [193,194], '1' => [196,197], '2' => [199,200], '3' => [202,203], '4' => [205,206], '5' => [208,209], '6' => [211,212], 'non_graded' => [214,215]] as $g => [$rm, $rf]) {
+                $s = $sub[$g];
+                $sheet->setCellValueByColumnAndRow(10, $rm, $s->sw_m);
+                $sheet->setCellValueByColumnAndRow(10, $rf, $s->sw_f);
+                $sheet->setCellValueByColumnAndRow(17, $rm, $s->wasted_m);
+                $sheet->setCellValueByColumnAndRow(17, $rf, $s->wasted_f);
+                $sheet->setCellValueByColumnAndRow(24, $rm, $s->normal_m);
+                $sheet->setCellValueByColumnAndRow(24, $rf, $s->normal_f);
+                $sheet->setCellValueByColumnAndRow(31, $rm, $s->overweight_m);
+                $sheet->setCellValueByColumnAndRow(31, $rf, $s->overweight_f);
+                $sheet->setCellValueByColumnAndRow(38, $rm, $s->obese_m);
+                $sheet->setCellValueByColumnAndRow(38, $rf, $s->obese_f);
             }
 
-            //For Kinder
-            $sheet->setCellValueByColumnAndRow(10, 193, $nutritionalSums['k']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 194, $nutritionalSums['k']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 193, $nutritionalSums['k']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 194, $nutritionalSums['k']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 193, $nutritionalSums['k']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 194, $nutritionalSums['k']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 193, $nutritionalSums['k']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 194, $nutritionalSums['k']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 193, $nutritionalSums['k']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 194, $nutritionalSums['k']->obese_f ?? 0);
-
-            //For Grade 1
-            $sheet->setCellValueByColumnAndRow(10, 196, $nutritionalSums['1']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 197, $nutritionalSums['1']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 196, $nutritionalSums['1']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 197, $nutritionalSums['1']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 196, $nutritionalSums['1']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 197, $nutritionalSums['1']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 196, $nutritionalSums['1']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 197, $nutritionalSums['1']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 196, $nutritionalSums['1']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 197, $nutritionalSums['1']->obese_f ?? 0);
-
-            //For Grade 2
-            $sheet->setCellValueByColumnAndRow(10, 199, $nutritionalSums['2']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 200, $nutritionalSums['2']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 199, $nutritionalSums['2']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 200, $nutritionalSums['2']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 199, $nutritionalSums['2']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 200, $nutritionalSums['2']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 199, $nutritionalSums['2']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 200, $nutritionalSums['2']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 199, $nutritionalSums['2']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 200, $nutritionalSums['2']->obese_f ?? 0);
-
-            //For Grade 3
-            $sheet->setCellValueByColumnAndRow(10, 202, $nutritionalSums['3']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 203, $nutritionalSums['3']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 202, $nutritionalSums['3']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 203, $nutritionalSums['3']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 202, $nutritionalSums['3']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 203, $nutritionalSums['3']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 202, $nutritionalSums['3']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 203, $nutritionalSums['3']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 202, $nutritionalSums['3']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 203, $nutritionalSums['3']->obese_f ?? 0);
-
-            //For Grade 4
-            $sheet->setCellValueByColumnAndRow(10, 205, $nutritionalSums['4']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 206, $nutritionalSums['4']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 205, $nutritionalSums['4']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 206, $nutritionalSums['4']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 205, $nutritionalSums['4']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 206, $nutritionalSums['4']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 205, $nutritionalSums['4']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 206, $nutritionalSums['4']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 205, $nutritionalSums['4']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 206, $nutritionalSums['4']->obese_f ?? 0);
-
-            //For Grade 5
-            $sheet->setCellValueByColumnAndRow(10, 208, $nutritionalSums['5']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 209, $nutritionalSums['5']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 208, $nutritionalSums['5']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 209, $nutritionalSums['5']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 208, $nutritionalSums['5']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 209, $nutritionalSums['5']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 208, $nutritionalSums['5']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 209, $nutritionalSums['5']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 208, $nutritionalSums['5']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 209, $nutritionalSums['5']->obese_f ?? 0);
-
-            //For Grade 6
-            $sheet->setCellValueByColumnAndRow(10, 211, $nutritionalSums['6']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 212, $nutritionalSums['6']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 211, $nutritionalSums['6']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 212, $nutritionalSums['6']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 211, $nutritionalSums['6']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 212, $nutritionalSums['6']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 211, $nutritionalSums['6']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 212, $nutritionalSums['6']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 211, $nutritionalSums['6']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 212, $nutritionalSums['6']->obese_f ?? 0);
-
-            //For Non-graded
-            $sheet->setCellValueByColumnAndRow(10, 214, $nutritionalSums['non_graded']->sw_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 215, $nutritionalSums['non_graded']->sw_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 214, $nutritionalSums['non_graded']->wasted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 215, $nutritionalSums['non_graded']->wasted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 214, $nutritionalSums['non_graded']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 215, $nutritionalSums['non_graded']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 214, $nutritionalSums['non_graded']->overweight_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 215, $nutritionalSums['non_graded']->overweight_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 214, $nutritionalSums['non_graded']->obese_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 215, $nutritionalSums['non_graded']->obese_f ?? 0);
-
-
-            //Create a query to get the beneficiary height_for_age sum of kinder, grade 1 to grade 6 and non-graded,
-            $targetGradesHfa = array_merge(['k'], range(1, 6), ['non_graded']);
-            $hfaSums = [];
-
-            foreach ($targetGradesHfa as $grade) {
-                $g = (string) $grade;
-                $hfaSums[$g] = NutritionalStatus::where('grade', $g)
-                    ->where('isBeneficiary', true)
-                    ->selectRaw("
-                        SUM(sex = 'm' AND height_for_age = 'severely stunted') as ss_m,
-                        SUM(sex = 'f' AND height_for_age = 'severely stunted') as ss_f,
-
-                        SUM(sex = 'm' AND height_for_age = 'stunted') as stunted_m,
-                        SUM(sex = 'f' AND height_for_age = 'stunted') as stunted_f,
-
-                        SUM(sex = 'm' AND height_for_age = 'normal') as normal_m,
-                        SUM(sex = 'f' AND height_for_age = 'normal') as normal_f,
-
-                        SUM(sex = 'm' AND height_for_age = 'tall') as tall_m,
-                        SUM(sex = 'f' AND height_for_age = 'tall') as tall_f
-                    ")
-                    ->first();
+            // ── HFA breakdown (rows 229-251) ─────────────────────────────────
+            foreach (['k' => [229,230], '1' => [232,233], '2' => [235,236], '3' => [238,239], '4' => [241,242], '5' => [244,245], '6' => [247,248], 'non_graded' => [250,251]] as $g => [$rm, $rf]) {
+                $s = $sub[$g];
+                $sheet->setCellValueByColumnAndRow(10, $rm, $s->ss_m);
+                $sheet->setCellValueByColumnAndRow(10, $rf, $s->ss_f);
+                $sheet->setCellValueByColumnAndRow(17, $rm, $s->stunted_m);
+                $sheet->setCellValueByColumnAndRow(17, $rf, $s->stunted_f);
+                $sheet->setCellValueByColumnAndRow(24, $rm, $s->hfa_normal_m);
+                $sheet->setCellValueByColumnAndRow(24, $rf, $s->hfa_normal_f);
+                $sheet->setCellValueByColumnAndRow(31, $rm, $s->tall_m);
+                $sheet->setCellValueByColumnAndRow(31, $rf, $s->tall_f);
             }
 
-            //For Kinder
-            $sheet->setCellValueByColumnAndRow(10, 229, $hfaSums['k']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 230, $hfaSums['k']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 229, $hfaSums['k']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 230, $hfaSums['k']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 229, $hfaSums['k']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 230, $hfaSums['k']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 229, $hfaSums['k']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 230, $hfaSums['k']->tall_f ?? 0);
-
-            //For Grade 1
-            $sheet->setCellValueByColumnAndRow(10, 232, $hfaSums['1']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 233, $hfaSums['1']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 232, $hfaSums['1']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 233, $hfaSums['1']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 232, $hfaSums['1']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 233, $hfaSums['1']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 232, $hfaSums['1']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 233, $hfaSums['1']->tall_f ?? 0);
-
-            //For Grade 2
-            $sheet->setCellValueByColumnAndRow(10, 235, $hfaSums['2']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 236, $hfaSums['2']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 235, $hfaSums['2']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 236, $hfaSums['2']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 235, $hfaSums['2']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 236, $hfaSums['2']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 235, $hfaSums['2']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 236, $hfaSums['2']->tall_f ?? 0);
-
-            //For Grade 3
-            $sheet->setCellValueByColumnAndRow(10, 238, $hfaSums['3']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 239, $hfaSums['3']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 238, $hfaSums['3']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 239, $hfaSums['3']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 238, $hfaSums['3']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 239, $hfaSums['3']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 238, $hfaSums['3']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 239, $hfaSums['3']->tall_f ?? 0);
-
-            //For Grade 4
-            $sheet->setCellValueByColumnAndRow(10, 241, $hfaSums['4']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 242, $hfaSums['4']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 241, $hfaSums['4']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 242, $hfaSums['4']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 241, $hfaSums['4']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 242, $hfaSums['4']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 241, $hfaSums['4']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 242, $hfaSums['4']->tall_f ?? 0);
-
-            //For Grade 5
-            $sheet->setCellValueByColumnAndRow(10, 244, $hfaSums['5']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 245, $hfaSums['5']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 244, $hfaSums['5']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 245, $hfaSums['5']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 244, $hfaSums['5']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 245, $hfaSums['5']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 244, $hfaSums['5']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 245, $hfaSums['5']->tall_f ?? 0);
-
-            //For Grade 6
-            $sheet->setCellValueByColumnAndRow(10, 247, $hfaSums['6']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 248, $hfaSums['6']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 247, $hfaSums['6']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 248, $hfaSums['6']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 247, $hfaSums['6']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 248, $hfaSums['6']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 247, $hfaSums['6']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 248, $hfaSums['6']->tall_f ?? 0);
-
-            //For Non-graded
-            $sheet->setCellValueByColumnAndRow(10, 250, $hfaSums['non_graded']->ss_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 251, $hfaSums['non_graded']->ss_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 250, $hfaSums['non_graded']->stunted_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 251, $hfaSums['non_graded']->stunted_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 250, $hfaSums['non_graded']->normal_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 251, $hfaSums['non_graded']->normal_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 250, $hfaSums['non_graded']->tall_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 251, $hfaSums['non_graded']->tall_f ?? 0);
-
-            //Create a query to get the beneficiary count of kinder, grade 1 to grade 6 and non-graded, male and female.
-            // Create a query to get the beneficiary count (male/female) for kinder, grades 1..6 and non_graded
-            $targetGradesCounts = array_merge(['k'], range(1, 6), ['non_graded']);
-            $beneficiaryCounts = [];
-
-            foreach ($targetGradesCounts as $grade) {
-                $g = (string) $grade;
-                $beneficiaryCounts[$g] = NutritionalStatus::where('grade', $g)
-                    ->where('isBeneficiary', true)
-                    ->selectRaw("
-                        SUM(sex = 'm') as male,
-                        SUM(sex = 'f') as female,
-                        COUNT(*) as total,
-                        SUM(sex = 'm' AND dewormed = 1) as dewormed_m,
-                        SUM(sex = 'f' AND dewormed = 1) as dewormed_f,
-                        SUM(dewormed = 1) as dewormed_total,
-                        SUM(sex = 'm' AND _4ps = 1) as fourps_m,
-                        SUM(sex = 'f' AND _4ps = 1) as fourps_f,
-                        SUM(_4ps = 1) as fourps_total,
-                        SUM(sex = 'm' AND sbfp_previous_beneficiary = 1) as prev_ben_m,
-                        SUM(sex = 'f' AND sbfp_previous_beneficiary = 1) as prev_ben_f,
-                        SUM(sbfp_previous_beneficiary = 1) as prev_ben_total
-                    ")
-                    ->first();
+            // ── Beneficiary counts (rows 263-285) ────────────────────────────
+            foreach (['k' => [263,264], '1' => [266,267], '2' => [269,270], '3' => [272,273], '4' => [275,276], '5' => [278,279], '6' => [281,282], 'non_graded' => [284,285]] as $g => [$rm, $rf]) {
+                $s = $sub[$g];
+                $sheet->setCellValueByColumnAndRow(10, $rm, $s->male);
+                $sheet->setCellValueByColumnAndRow(10, $rf, $s->female);
+                $sheet->setCellValueByColumnAndRow(15, $rm, $s->male);
+                $sheet->setCellValueByColumnAndRow(15, $rf, $s->female);
+                $sheet->setCellValueByColumnAndRow(22, $rm, $s->dewormed_m);
+                $sheet->setCellValueByColumnAndRow(22, $rf, $s->dewormed_f);
+                $sheet->setCellValueByColumnAndRow(29, $rm, $s->fourps_m);
+                $sheet->setCellValueByColumnAndRow(29, $rf, $s->fourps_f);
+                $sheet->setCellValueByColumnAndRow(36, $rm, $s->prev_ben_m);
+                $sheet->setCellValueByColumnAndRow(36, $rf, $s->prev_ben_f);
             }
 
-            //For kinder
-            $sheet->setCellValueByColumnAndRow(10, 263, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 264, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 263, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 264, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 263, $beneficiaryCounts['k']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 264, $beneficiaryCounts['k']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 263, $beneficiaryCounts['k']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 264, $beneficiaryCounts['k']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 263, $beneficiaryCounts['k']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 264, $beneficiaryCounts['k']->prev_ben_f ?? 0);
+            // ── Attendance table (rows 298-320) ──────────────────────────────
+            $attendanceCols = [10, 17, 24, 31, 38, 45, 52, 59, 66, 73];
+            foreach (['k' => [298,299], '1' => [301,302], '2' => [304,305], '3' => [307,308], '4' => [310,311], '5' => [313,314], '6' => [316,317], 'non_graded' => [319,320]] as $g => [$rm, $rf]) {
+                $male   = $sub[$g]->male;
+                $female = $sub[$g]->female;
+                foreach ($attendanceCols as $col) {
+                    $sheet->setCellValueByColumnAndRow($col, $rm, $male);
+                    $sheet->setCellValueByColumnAndRow($col, $rf, $female);
+                }
+            }
 
-            //For Grade 1
-            $sheet->setCellValueByColumnAndRow(10, 266, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 267, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 266, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 267, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 266, $beneficiaryCounts['1']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 267, $beneficiaryCounts['1']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 266, $beneficiaryCounts['1']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 267, $beneficiaryCounts['1']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 266, $beneficiaryCounts['1']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 267, $beneficiaryCounts['1']->prev_ben_f ?? 0);
-
-            //For Grade 2
-            $sheet->setCellValueByColumnAndRow(10, 269, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 270, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 269, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 270, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 269, $beneficiaryCounts['2']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 270, $beneficiaryCounts['2']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 269, $beneficiaryCounts['2']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 270, $beneficiaryCounts['2']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 269, $beneficiaryCounts['2']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 270, $beneficiaryCounts['2']->prev_ben_f ?? 0);
-
-            //For Grade 3
-            $sheet->setCellValueByColumnAndRow(10, 272, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 273, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 272, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 273, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 272, $beneficiaryCounts['3']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 273, $beneficiaryCounts['3']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 272, $beneficiaryCounts['3']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 273, $beneficiaryCounts['3']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 272, $beneficiaryCounts['3']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 273, $beneficiaryCounts['3']->prev_ben_f ?? 0);
-
-            //For Grade 4
-            $sheet->setCellValueByColumnAndRow(10, 275, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 276, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 275, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 276, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 275, $beneficiaryCounts['4']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 276, $beneficiaryCounts['4']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 275, $beneficiaryCounts['4']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 276, $beneficiaryCounts['4']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 275, $beneficiaryCounts['4']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 276, $beneficiaryCounts['4']->prev_ben_f ?? 0);
-
-            //For Grade 5
-            $sheet->setCellValueByColumnAndRow(10, 278, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 279, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 278, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 279, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 278, $beneficiaryCounts['5']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 279, $beneficiaryCounts['5']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 278, $beneficiaryCounts['5']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 279, $beneficiaryCounts['5']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 278, $beneficiaryCounts['5']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 279, $beneficiaryCounts['5']->prev_ben_f ?? 0);
-
-            //For Grade 6
-            $sheet->setCellValueByColumnAndRow(10, 281, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 282, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 281, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 282, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 281, $beneficiaryCounts['6']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 282, $beneficiaryCounts['6']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 281, $beneficiaryCounts['6']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 282, $beneficiaryCounts['6']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 281, $beneficiaryCounts['6']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 282, $beneficiaryCounts['6']->prev_ben_f ?? 0);
-
-            //For Non-graded
-            $sheet->setCellValueByColumnAndRow(10, 284, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 285, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 284, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(15, 285, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 284, $beneficiaryCounts['non_graded']->dewormed_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(22, 285, $beneficiaryCounts['non_graded']->dewormed_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 284, $beneficiaryCounts['non_graded']->fourps_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(29, 285, $beneficiaryCounts['non_graded']->fourps_f ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 284, $beneficiaryCounts['non_graded']->prev_ben_m ?? 0);
-            $sheet->setCellValueByColumnAndRow(36, 285, $beneficiaryCounts['non_graded']->prev_ben_f ?? 0);
-
-
-
-
-            //9. Percentage and attendance table
-            //For kinder
-            $sheet->setCellValueByColumnAndRow(10, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 299, $beneficiaryCounts['k']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 298, $beneficiaryCounts['k']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 299, $beneficiaryCounts['k']->female ?? 0);
-
-
-            //For Grade 1
-            $sheet->setCellValueByColumnAndRow(10, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 302, $beneficiaryCounts['1']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 301, $beneficiaryCounts['1']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 302, $beneficiaryCounts['1']->female ?? 0);
-
-            //For Grade 2
-            $sheet->setCellValueByColumnAndRow(10, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 305, $beneficiaryCounts['2']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 304, $beneficiaryCounts['2']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 305, $beneficiaryCounts['2']->female ?? 0);
-
-            //For Grade 3
-            $sheet->setCellValueByColumnAndRow(10, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 308, $beneficiaryCounts['3']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 307, $beneficiaryCounts['3']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 308, $beneficiaryCounts['3']->female ?? 0);
-
-            //For Grade 4
-            $sheet->setCellValueByColumnAndRow(10, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 311, $beneficiaryCounts['4']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 310, $beneficiaryCounts['4']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 311, $beneficiaryCounts['4']->female ?? 0);
-
-            //For Grade 5
-            $sheet->setCellValueByColumnAndRow(10, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 314, $beneficiaryCounts['5']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 313, $beneficiaryCounts['5']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 314, $beneficiaryCounts['5']->female ?? 0);
-
-            //For Grade 6
-            $sheet->setCellValueByColumnAndRow(10, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 317, $beneficiaryCounts['6']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 316, $beneficiaryCounts['6']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 317, $beneficiaryCounts['6']->female ?? 0);
-
-            //For Non-graded
-            $sheet->setCellValueByColumnAndRow(10, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(10, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(17, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(24, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(31, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(38, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(45, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(52, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(59, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(66, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 319, $beneficiaryCounts['non_graded']->male ?? 0);
-            $sheet->setCellValueByColumnAndRow(73, 320, $beneficiaryCounts['non_graded']->female ?? 0);
-
-
-
-
-
-            //10. Completion rate table
-            $maleSum = $beneficiaryCounts['non_graded']->male + $beneficiaryCounts['6']->male + $beneficiaryCounts['5']->male + $beneficiaryCounts['4']->male + $beneficiaryCounts['3']->male + $beneficiaryCounts['2']->male + $beneficiaryCounts['1']->male + $beneficiaryCounts['k']->male;
-            $femaleSum = $beneficiaryCounts['non_graded']->female + $beneficiaryCounts['6']->female + $beneficiaryCounts['5']->female + $beneficiaryCounts['4']->female + $beneficiaryCounts['3']->female + $beneficiaryCounts['2']->female + $beneficiaryCounts['1']->female + $beneficiaryCounts['k']->female;
-
-
-            $sheet->setCellValueByColumnAndRow(20, 330, $maleSum ?? 0);
-            $sheet->setCellValueByColumnAndRow(23, 330, $femaleSum ?? 0);
-            $sheet->setCellValueByColumnAndRow(20, 331, $maleSum ?? 0);
-            $sheet->setCellValueByColumnAndRow(23, 331, $femaleSum ?? 0);
-
-
-
-
+            // ── Completion rate (rows 330-331) ────────────────────────────────
+            $maleSum   = array_sum(array_map(fn($g) => $sub[$g]->male,   $subsetGrades));
+            $femaleSum = array_sum(array_map(fn($g) => $sub[$g]->female, $subsetGrades));
+            $sheet->setCellValueByColumnAndRow(20, 330, $maleSum);
+            $sheet->setCellValueByColumnAndRow(23, 330, $femaleSum);
+            $sheet->setCellValueByColumnAndRow(20, 331, $maleSum);
+            $sheet->setCellValueByColumnAndRow(23, 331, $femaleSum);
 
             // save spreadsheet to a new temp file so the original template remains unchanged
             $outFileName = 'Form7_filled_' . time() . '.xlsx';

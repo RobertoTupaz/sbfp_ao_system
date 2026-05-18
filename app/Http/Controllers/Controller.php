@@ -133,7 +133,7 @@ class Controller extends BaseController
                 'section' => $faker->randomElement(['A', 'B', 'C', 'D']),
                 '_4ps' => $faker->randomElement([0, 1]),
                 'ip' => $faker->randomElement([0, 1]),
-                'pardo' => $faker->word,
+                'pardo' => $faker->randomElement([0, 1]),
                 'dewormed' => $faker->randomElement([0, 1]),
                 'parent_consent_milk' => $faker->randomElement([0, 1]),
                 'sbfp_previous_beneficiary' => $faker->randomElement([0, 1]),

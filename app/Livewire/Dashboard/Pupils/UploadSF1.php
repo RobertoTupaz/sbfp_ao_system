@@ -121,7 +121,7 @@ class UploadSF1 extends Component
             $lrn = trim((string) $sheet->getCell('A' . $row)->getValue());
             $sex = trim((string) $sheet->getCell('G' . $row)->getValue());
 
-            if ($malesBatchDone & $sex == null) {
+            if ($malesBatchDone && $sex == null) {
                 break;
             }
             if ($lrn < 2000 || $lrn === null) {
@@ -248,7 +248,7 @@ class UploadSF1 extends Component
                 'suffix_name' => $row['middle_name'] ?? null,
                 'sex' => $row['sex'] ?? null,
                 'birthday' => $row['birthdate'] ?? null,
-                'weight' => !empty($row['ip']) ? (float) $row['ip'] : null,
+                'weight' => null,
                 'age_years' => $row['age_years'] ?? null,
                 'age_months' => $row['age_months'] ?? null,
                 'grade' => isset($row['grade']) ? $this->normalizeGrade($row['grade']) : null,

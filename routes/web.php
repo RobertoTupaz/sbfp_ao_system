@@ -46,6 +46,10 @@ Route::view('/analytics', 'analytics')
     ->middleware(['auth', 'verified'])
     ->name('analytics');
 
+Route::view('/school-profile', 'school_profile')
+    ->middleware(['auth', 'verified'])
+    ->name('school_profile');
+
 Route::get('/run-nutritional-seeder', [App\Http\Controllers\Controller::class, 'nsSeeder'])->name('run.nutritional.seeder');
 
 require __DIR__ . '/auth.php';

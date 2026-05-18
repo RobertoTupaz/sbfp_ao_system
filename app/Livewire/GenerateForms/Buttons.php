@@ -3,6 +3,7 @@
 namespace App\Livewire\GenerateForms;
 
 use App\Models\Beneficiaries;
+use App\Models\SchoolProfile;
 use App\Models\SwappedPupils;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -114,15 +115,17 @@ class Buttons extends Component
                 ->getAlignment()
                 ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
 
+            $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
+
             $focalNameRow = $footerRow + 1;
             $sheet->mergeCells("A{$focalNameRow}:B{$focalNameRow}");
-            $sheet->setCellValue("A{$focalNameRow}", '(Focal Person Name)');
+            $sheet->setCellValue("A{$focalNameRow}", $schoolProfile?->school_focal_name ?? '');
             $sheet->getStyle("A{$focalNameRow}:B{$focalNameRow}")
                 ->getFont()
                 ->setBold(true);
 
             $sheet->mergeCells("M{$focalNameRow}:N{$focalNameRow}");
-            $sheet->setCellValue("M{$focalNameRow}", '(Full Name)');
+            $sheet->setCellValue("M{$focalNameRow}", $schoolProfile?->school_head_name ?? '');
             $sheet->getStyle("M{$focalNameRow}:N{$focalNameRow}")
                 ->getFont()
                 ->setBold(true);
@@ -135,7 +138,9 @@ class Buttons extends Component
             $sheet->setCellValue("M{$positionRow}", 'School Head');
 
             // save spreadsheet to a new temp file so the original template remains unchanged
-            $outFileName = 'Form1_filled_' . time() . '.xlsx';
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'Form_1-' . $schoolSlug . '-' . $datetime . '.xlsx';
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -165,6 +170,16 @@ class Buttons extends Component
         try {
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
             $sheet = $spreadsheet->getActiveSheet();
+
+            $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
+            $sheet->setCellValueByColumnAndRow(11, 9,  auth()->user()->school?->school_name ?? '');
+            $sheet->setCellValueByColumnAndRow(11, 11, $schoolProfile?->school_head_name ?? '');
+            $sheet->setCellValueByColumnAndRow(28, 11, $schoolProfile?->school_email ?? '');
+            $sheet->setCellValueByColumnAndRow(6,  12, auth()->user()->school?->school_id ?? '');
+            $sheet->setCellValueByColumnAndRow(30, 12, NutritionalStatus::count());
+            $sheet->setCellValueByColumnAndRow(6,  396, $schoolProfile?->school_focal_name ?? '');
+            $sheet->setCellValueByColumnAndRow(26, 396, $schoolProfile?->school_head_name ?? '');
+            $sheet->setCellValueByColumnAndRow(13, 398, \Carbon\Carbon::today()->format('F d, Y'));
 
             $allGrades    = array_merge(['k'], array_map('strval', range(1, 12)), ['non_graded']);
             $subsetGrades = array_merge(['k'], array_map('strval', range(1, 6)), ['non_graded']);
@@ -373,7 +388,9 @@ class Buttons extends Component
             $sheet->setCellValueByColumnAndRow(23, 331, $femaleSum);
 
             // save spreadsheet to a new temp file so the original template remains unchanged
-            $outFileName = 'Form7_filled_' . time() . '.xlsx';
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'Form_7-' . $schoolSlug . '-' . $datetime . '.xlsx';
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -406,6 +423,10 @@ class Buttons extends Component
 
             $sheet->setCellValueByColumnAndRow(1, 4, "NUTRITIONAL STATUS REPORT OF " . strtoupper(auth()->user()->school->school_name) ?? '');
             $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2025 - 2026");
+
+            $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
+            $sheet->setCellValueByColumnAndRow(2, 40, $schoolProfile?->school_focal_name ?? '');
+            $sheet->setCellValueByColumnAndRow(16, 40, $schoolProfile?->school_head_name ?? '');
 
             // fetch records from database
             $kinderStats = NutritionalStatus::where('grade', 'k')
@@ -589,7 +610,9 @@ class Buttons extends Component
             }
 
             // save spreadsheet to a new temp file so the original template remains unchanged
-            $outFileName = 'SNS_Elem_' . time() . '.xlsx';
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'SNS_Elementary-' . $schoolSlug . '-' . $datetime . '.xlsx';
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -622,6 +645,10 @@ class Buttons extends Component
 
             $sheet->setCellValueByColumnAndRow(1, 4, "NUTRITIONAL STATUS REPORT OF " . strtoupper(auth()->user()->school->school_name) ?? '');
             $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2025 - 2026");
+
+            $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
+            $sheet->setCellValueByColumnAndRow(2, 34, $schoolProfile?->school_focal_name ?? '');
+            $sheet->setCellValueByColumnAndRow(16, 34, $schoolProfile?->school_head_name ?? '');
 
             $gradeStats = [];
             // starting row in the template
@@ -691,7 +718,9 @@ class Buttons extends Component
             }
 
             // save spreadsheet to a new temp file so the original template remains unchanged
-            $outFileName = 'SNS_HighSchool_' . time() . '.xlsx';
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'SNS_High_School-' . $schoolSlug . '-' . $datetime . '.xlsx';
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);

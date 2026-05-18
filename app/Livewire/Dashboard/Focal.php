@@ -321,6 +321,10 @@ class Focal extends Component
 
             // save spreadsheet to a new temp file so the original template remains unchanged
             $outFileName = 'Forms_' . time() . '.xlsx';
+            $dir = public_path('downloaded_exel');
+            if (!is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->setPreCalculateFormulas(false);

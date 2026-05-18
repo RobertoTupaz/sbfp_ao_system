@@ -22,6 +22,14 @@ class Buttons extends Component
         $beneficiaries = Beneficiaries::first();
         $this->beneficiariesCount = $beneficiaries ? $beneficiaries->beneficiaries_count : 0;
     }
+
+    private function ensureDownloadDir(): void
+    {
+        $dir = public_path('downloaded_exel');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+    }
     public function render()
     {
         return view('livewire.generate-forms.buttons');
@@ -141,6 +149,7 @@ class Buttons extends Component
             $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
             $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
             $outFileName = 'Form_1-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -391,6 +400,7 @@ class Buttons extends Component
             $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
             $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
             $outFileName = 'Form_7-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -613,6 +623,7 @@ class Buttons extends Component
             $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
             $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
             $outFileName = 'SNS_Elementary-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -721,6 +732,7 @@ class Buttons extends Component
             $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
             $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
             $outFileName = 'SNS_High_School-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
             $outFile = public_path('downloaded_exel/' . $outFileName);
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save($outFile);
@@ -744,6 +756,7 @@ class Buttons extends Component
             $json = $records->toJson(JSON_PRETTY_PRINT);
 
             $outFileName = 'nutritional_statuses_' . time() . '.json';
+            $this->ensureDownloadDir();
             $outFile = public_path('downloaded_exel/' . $outFileName);
 
             if (file_put_contents($outFile, $json) === false) {

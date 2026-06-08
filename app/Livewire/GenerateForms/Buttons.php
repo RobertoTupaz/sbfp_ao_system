@@ -8,6 +8,7 @@ use App\Models\SwappedPupils;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\NutritionalStatus;
+use App\Models\PrimarySecondaryBeneficiaries;
 use Illuminate\Support\Facades\Log;
 
 class Buttons extends Component
@@ -812,6 +813,181 @@ class Buttons extends Component
         } catch (\Throwable $e) {
             Log::error('Error importing nutritional_statuses JSON: ' . $e->getMessage());
             session()->flash('error', 'Failed to import JSON: ' . $e->getMessage());
+        }
+    }
+
+    public function generateForm2()
+    {
+        $template = public_path('exel/Form2.xlsx');
+        if (!file_exists($template)) {
+            session()->flash('error', 'Form2.xlsx not found in public/exel');
+            Log::error('Form2 write failed - template not found: ' . $template);
+            return;
+        }
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
+
+            // ── Header fields ────────────────────────────────────────────────
+            $school = auth()->user()->school;
+            $districtNum = $school?->district;
+
+            // Row 4  – school name in the pre-title header area
+            $sheet->setCellValue('B4', $school?->school_name ?? '');
+
+            // Rows 6-9 – form body header fields
+            $sheet->setCellValue('B6', 'Malaybalay City Division');           // Schools Division Office
+            $sheet->setCellValue('B7', 'Malaybalay City, Bukidnon');          // City/Municipality/Barangay
+            $schoolNameWithDistrict = trim(($school?->school_name ?? '') . ($districtNum ? ' / ' . $districtNum : ''));
+            $sheet->setCellValue('D8', $schoolNameWithDistrict);              // Name of School / School District
+            $sheet->setCellValue('D9', $school?->school_id ?? '');            // School ID Number
+            // B10 (Date of Start of Feeding) – not stored in DB, left blank
+            // B11 (Last Mile School Y/N)     – not stored in DB, left blank
+
+            // ── Data query: aggregate per grade ──────────────────────────────
+            $grades = ['k', '1', '2', '3', '4', '5', '6'];
+
+            // ── Determine primary-beneficiary conditions from the settings table ─
+            // A secondary beneficiary is isBeneficiary=true AND NOT a primary.
+            // Columns J (pardo), K (stunted/SS), L (indigent=4Ps), M (IP)
+            // must only count SECONDARY beneficiaries.
+            $primaryConfig = PrimarySecondaryBeneficiaries::where('name', 'Primary')->first();
+            $primaryClauses = [];
+            if ($primaryConfig?->all_kinder)       $primaryClauses[] = "grade = 'k'";
+            if ($primaryConfig?->all_grade_1)      $primaryClauses[] = "grade = '1'";
+            if ($primaryConfig?->all_grade_2)      $primaryClauses[] = "grade = '2'";
+            if ($primaryConfig?->all_grade_3)      $primaryClauses[] = "grade = '3'";
+            if ($primaryConfig?->severely_wasted)  $primaryClauses[] = "nutritional_status = 'severely wasted'";
+            if ($primaryConfig?->wasted)           $primaryClauses[] = "nutritional_status = 'wasted'";
+            if ($primaryConfig?->normal_weight)    $primaryClauses[] = "nutritional_status = 'normal'";
+            if ($primaryConfig?->overweight_obese) $primaryClauses[] = "nutritional_status IN ('overweight','obese')";
+            if ($primaryConfig?->severely_stunted) $primaryClauses[] = "height_for_age = 'severely stunted'";
+            if ($primaryConfig?->stunted)          $primaryClauses[] = "height_for_age = 'stunted'";
+            if ($primaryConfig?->normal_height)    $primaryClauses[] = "height_for_age = 'normal'";
+            if ($primaryConfig?->tall)             $primaryClauses[] = "height_for_age = 'tall'";
+            if ($primaryConfig?->_4ps)             $primaryClauses[] = "_4ps = 1";
+            if ($primaryConfig?->ip)               $primaryClauses[] = "ip = 1";
+            if ($primaryConfig?->pardo)            $primaryClauses[] = "pardo = 1";
+
+            // SQL fragment that is TRUE when a row is NOT a primary beneficiary
+            $notPrimary = empty($primaryClauses)
+                ? '1'
+                : 'NOT (' . implode(' OR ', $primaryClauses) . ')';
+
+            $zero = (object) [
+                'sw' => 0, 'wasted' => 0, 'normal_weight' => 0, 'overweight_obese' => 0,
+                'severely_stunted' => 0, 'stunted' => 0, 'normal_height' => 0, 'tall' => 0,
+                'pardo_cnt' => 0, 'stunted_ss' => 0, 'ip_cnt' => 0, 'dewormed_cnt' => 0,
+                'fourps_sec' => 0, 'fourps_all' => 0, 'prev_ben' => 0,
+            ];
+
+            // Aliases for pardo, ip, dewormed use a _cnt suffix to avoid
+            // colliding with the model's boolean casts on those column names,
+            // which would turn the SUM result into TRUE/FALSE.
+            // Columns J, K, L, M filter by $notPrimary (secondary beneficiaries only).
+            // fourps_sec (col L) = secondary 4Ps; fourps_all (col O) = all 4Ps beneficiaries.
+            $statsRaw = NutritionalStatus::where('isBeneficiary', true)
+                ->whereIn('grade', $grades)
+                ->selectRaw("
+                    grade,
+                    SUM(nutritional_status = 'severely wasted')                               AS sw,
+                    SUM(nutritional_status = 'wasted')                                        AS wasted,
+                    SUM(nutritional_status = 'normal')                                        AS normal_weight,
+                    SUM(nutritional_status IN ('overweight','obese'))                          AS overweight_obese,
+                    SUM(height_for_age = 'severely stunted')                                  AS severely_stunted,
+                    SUM(height_for_age = 'stunted')                                           AS stunted,
+                    SUM(height_for_age = 'normal')                                            AS normal_height,
+                    SUM(height_for_age = 'tall')                                              AS tall,
+                    SUM(pardo = 1 AND ({$notPrimary}))                                        AS pardo_cnt,
+                    SUM(height_for_age IN ('stunted','severely stunted') AND ({$notPrimary})) AS stunted_ss,
+                    SUM(ip = 1 AND ({$notPrimary}))                                           AS ip_cnt,
+                    SUM(dewormed = 1)                                                         AS dewormed_cnt,
+                    SUM(_4ps = 1 AND ({$notPrimary}))                                         AS fourps_sec,
+                    SUM(_4ps = 1)                                                             AS fourps_all,
+                    SUM(sbfp_previous_beneficiary = 1)                                        AS prev_ben
+                ")
+                ->groupBy('grade')
+                ->get()
+                ->keyBy('grade');
+
+            // ── Row map: grade => Excel row ──────────────────────────────────
+            // B=2 Severely Wasted | C=3 Wasted | D=4 Normal | E=5 Overweight+Obese
+            // F=6 Severely Stunted | G=7 Stunted | H=8 Normal(HFA) | I=9 Tall
+            // J=10 PARDO | K=11 Stunted/SS | L=12 Indigent | M=13 IP
+            // N=14 Dewormed | O=15 4Ps | P=16 Prev beneficiary
+            $rowMap = ['k' => 14, '1' => 15, '2' => 16, '3' => 17, '4' => 18, '5' => 19, '6' => 20];
+
+            $totals = array_fill_keys(
+                ['sw','wasted','normal_weight','overweight_obese','severely_stunted',
+                 'stunted','normal_height','tall','pardo_cnt','stunted_ss','ip_cnt',
+                 'dewormed_cnt','fourps_sec','fourps_all','prev_ben'],
+                0
+            );
+
+            foreach ($rowMap as $grade => $row) {
+                $s = $statsRaw->get($grade) ?? $zero;
+
+                $sheet->setCellValueByColumnAndRow(2,  $row, $s->sw);
+                $sheet->setCellValueByColumnAndRow(3,  $row, $s->wasted);
+                $sheet->setCellValueByColumnAndRow(4,  $row, $s->normal_weight);
+                $sheet->setCellValueByColumnAndRow(5,  $row, $s->overweight_obese);
+                $sheet->setCellValueByColumnAndRow(6,  $row, $s->severely_stunted);
+                $sheet->setCellValueByColumnAndRow(7,  $row, $s->stunted);
+                $sheet->setCellValueByColumnAndRow(8,  $row, $s->normal_height);
+                $sheet->setCellValueByColumnAndRow(9,  $row, $s->tall);
+                $sheet->setCellValueByColumnAndRow(10, $row, $s->pardo_cnt);        // J: secondary PARDO
+                $sheet->setCellValueByColumnAndRow(11, $row, $s->stunted_ss);       // K: secondary Stunted/SS
+                $sheet->setCellValueByColumnAndRow(12, $row, $s->fourps_sec);       // L: secondary Indigent (4Ps)
+                $sheet->setCellValueByColumnAndRow(13, $row, $s->ip_cnt);           // M: secondary IP
+                $sheet->setCellValueByColumnAndRow(14, $row, $s->dewormed_cnt);     // N: all dewormed
+                $sheet->setCellValueByColumnAndRow(15, $row, $s->fourps_all);       // O: all 4Ps beneficiaries
+                $sheet->setCellValueByColumnAndRow(16, $row, $s->prev_ben);         // P: prev year beneficiaries
+
+                foreach (array_keys($totals) as $key) {
+                    $totals[$key] += (int) ($s->$key ?? 0);
+                }
+            }
+
+            // ── Totals row (row 21) ──────────────────────────────────────────
+            $sheet->setCellValueByColumnAndRow(2,  21, $totals['sw']);
+            $sheet->setCellValueByColumnAndRow(3,  21, $totals['wasted']);
+            $sheet->setCellValueByColumnAndRow(4,  21, $totals['normal_weight']);
+            $sheet->setCellValueByColumnAndRow(5,  21, $totals['overweight_obese']);
+            $sheet->setCellValueByColumnAndRow(6,  21, $totals['severely_stunted']);
+            $sheet->setCellValueByColumnAndRow(7,  21, $totals['stunted']);
+            $sheet->setCellValueByColumnAndRow(8,  21, $totals['normal_height']);
+            $sheet->setCellValueByColumnAndRow(9,  21, $totals['tall']);
+            $sheet->setCellValueByColumnAndRow(10, 21, $totals['pardo_cnt']);        // J: secondary PARDO
+            $sheet->setCellValueByColumnAndRow(11, 21, $totals['stunted_ss']);       // K: secondary Stunted/SS
+            $sheet->setCellValueByColumnAndRow(12, 21, $totals['fourps_sec']);       // L: secondary Indigent (4Ps)
+            $sheet->setCellValueByColumnAndRow(13, 21, $totals['ip_cnt']);           // M: secondary IP
+            $sheet->setCellValueByColumnAndRow(14, 21, $totals['dewormed_cnt']);     // N: all dewormed
+            $sheet->setCellValueByColumnAndRow(15, 21, $totals['fourps_all']);       // O: all 4Ps beneficiaries
+            $sheet->setCellValueByColumnAndRow(16, 21, $totals['prev_ben']);         // P: prev year beneficiaries
+
+            // ── Footer signatures (row 22) ───────────────────────────────────
+            $sheet->setCellValueByColumnAndRow(2,  22, $schoolProfile?->school_focal_name ?? '');  // B22 - SBFP Focal
+            $sheet->setCellValueByColumnAndRow(12, 22, $schoolProfile?->school_head_name ?? '');  // L22 - School Head
+
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'Form_2-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
+            $outFile = public_path('downloaded_exel/' . $outFileName);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($outFile);
+
+            session()->flash('success', 'Form2.xlsx generated for download.');
+            Log::info($outFileName . ' successfully written with ' . array_sum($totals) . ' data points.');
+
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
+            $this->dispatch('form2-ready', $downloadUrl);
+        } catch (\Throwable $e) {
+            Log::error('Error writing Form2.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to generate Form2.xlsx: ' . $e->getMessage());
         }
     }
 

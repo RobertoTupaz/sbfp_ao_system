@@ -3,7 +3,18 @@
     "allow": [
       "Bash(Get-ChildItem -Path \"C:\\\\xampp\\\\htdocs\\\\sbfp_ao_system\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(php *)"
+      "Bash(php *)",
+      "Read(//c/Users/ADMIN/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/ecc85f17-d51b-427c-bf61-50c14d3d2a21/0ee27d04-d186-4304-884d-a429bea3c3da/skills/docx/**)",
+      "Bash(ls)",
+      "Bash(ls \"C:\\\\Users\\\\ADMIN\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\ecc85f17-d51b-427c-bf61-50c14d3d2a21\\\\0ee27d04-d186-4304-884d-a429bea3c3da\\\\skills\\\\docx\\\\\" 2>/dev/null)",
+      "PowerShell(node -e \"console.log\\('node ok'\\); const d = require\\('docx'\\); console.log\\('docx ok'\\);\" 2>&1)",
+      "Bash(npm install *)",
+      "Bash(node generate_accreditation.mjs)",
+      "Bash(npm root *)",
+      "Bash(node -e \"require\\('docx'\\); console.log\\('ok'\\)\" --require \"$\\(npm root -g\\)/docx\")",
+      "Bash(ls \"$\\(npm root -g\\)/docx\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const docx=require\\('C:/Users/ADMIN/AppData/Roaming/npm/node_modules/docx'\\); console.log\\(Object.keys\\(docx\\).slice\\(0,5\\).join\\(','\\)\\);\")"
     ]
   }
 }

@@ -137,18 +137,35 @@
             </div>
         </a>
 
-        {{-- <a href="#" role="button" aria-label="Generate Form 2"
-            class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center">
+        <a href="#" role="button" aria-label="Generate Form 2" wire:click.prevent="generateForm2"
+            wire:loading.attr="disabled" wire:target="generateForm2"
+            class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
             <div class="flex items-center justify-center mb-4">
-                <svg class="w-12 h-12 text-green-600 group-hover:text-green-700" xmlns="http://www.w3.org/2000/svg"
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M9 12h6m-6 4h6M7 8h10M5 6h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z" />
-                </svg>
+                <div wire:loading wire:target="generateForm2" class="flex items-center justify-center">
+                    <svg class="animate-spin h-12 w-12 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="generateForm2">
+                    <svg class="w-12 h-12 text-green-600 group-hover:text-green-700" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 12h6m-6 4h6M7 8h10M5 6h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z" />
+                    </svg>
+                </div>
             </div>
-            <div class="text-lg font-medium text-gray-800">Form 2</div>
-            <div class="text-sm text-gray-500 mt-2">Generate Form 2 (School Summary)</div>
-        </a> --}}
+            <div class="text-lg font-medium text-gray-800">
+                <span wire:loading.remove wire:target="generateForm2">Form 2</span>
+                <span wire:loading wire:target="generateForm2">Generating...</span>
+            </div>
+            <div class="text-sm text-gray-500 mt-2">
+                <span wire:loading.remove wire:target="generateForm2">Generate Form 2 (School Summary)</span>
+                <span wire:loading wire:target="generateForm2">Please wait — preparing download</span>
+            </div>
+        </a>
 
         {{-- <a href="#" role="button" aria-label="Generate Form 3"
             class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center">
@@ -198,6 +215,12 @@
                 console.error('Download error', err);
             }
         }
+
+        window.addEventListener('form2-ready', function(e) {
+            var url = e && e.detail && e.detail.url ? e.detail.url : null;
+            if (!url && e && e.detail) url = e.detail;
+            _gf_trigger_download(url);
+        });
 
         window.addEventListener('form1-ready', function(e) {
             var url = e && e.detail && e.detail.url ? e.detail.url : null;

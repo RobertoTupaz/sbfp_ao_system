@@ -111,7 +111,7 @@ class Buttons extends Component
             }
 
             // add a footer row below the last data row and merge columns A and B
-            $footerRow = $endRow > 0 ? $endRow + 2 : $startRow;
+            $footerRow = $endRow > 0 ? $endRow + 4 : $startRow;
             $sheet->mergeCells("A{$footerRow}:B{$footerRow}");
             $sheet->setCellValue("A{$footerRow}", 'Prepared by :');
             $sheet->getStyle("A{$footerRow}:B{$footerRow}")

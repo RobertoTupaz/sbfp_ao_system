@@ -6,6 +6,8 @@ use App\Models\NutritionalStatus;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
@@ -86,6 +88,13 @@ class UploadSF1 extends Component
         return 'non-graded';
     }
 
+    protected function getSf1Sheet(Spreadsheet $spreadsheet): Worksheet
+    {
+        $sheetIndex = $spreadsheet->getSheetCount() === 1 ? 0 : 1;
+
+        return $spreadsheet->getSheet($sheetIndex);
+    }
+
     public function importPreview()
     {
         // kept for backward compatibility, but not used in UI
@@ -100,12 +109,7 @@ class UploadSF1 extends Component
             return;
         }
 
-        try {
-            $sheet = $spreadsheet->getSheet(1);
-        } catch (\Exception $e) {
-            $this->addError('excel', 'File does not contain a second sheet.');
-            return;
-        }
+        $sheet = $this->getSf1Sheet($spreadsheet);
 
         $this->rows = [];
 
@@ -186,12 +190,7 @@ class UploadSF1 extends Component
                 return;
             }
 
-            try {
-                $sheet = $spreadsheet->getSheet(1);
-            } catch (\Exception $e) {
-                $this->addError('excel', 'File does not contain a second sheet.');
-                return;
-            }
+            $sheet = $this->getSf1Sheet($spreadsheet);
 
             $grade = $this->processGrade($sheet->getCell('AE' . 4)->getValue());
             $section = trim((string) $sheet->getCell('AM' . 4)->getValue());

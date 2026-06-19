@@ -3,30 +3,43 @@
 namespace App\Livewire\TrackEnrollees;
 
 use App\Models\HfaSimplifiedVersion;
+use App\Models\NutritionalStatus;
 use App\Models\SwappedPupils;
 use Carbon\Carbon;
-use Livewire\Component;
-use App\Models\NutritionalStatus;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Livewire\Component;
 
 class Base extends Component
 {
     public $gradeCounts = [];
+
     public $selectedGrade = null;
+
     public $sectionCounts = [];
+
     public $selectedSection = null;
+
     public $students = [];
+
+    public $pupilSearch = '';
+
+    public $selectedSectionPupilCount = 0;
+
     public $showDeleteAll = false;
+
     // editing state
     public $editingStudent = null;
+
     public $editingHeight = null;
+
     public $editingWeight = null;
 
     public function render()
     {
         $this->loadGradeCounts();
+
         return view('livewire.track-enrollees.base');
     }
 
@@ -53,8 +66,8 @@ class Base extends Component
         $this->gradeCounts = [];
         foreach ($grades as $g) {
             $this->gradeCounts[$g] = [
-                'total' => isset($counts[$g]) ? (int)$counts[$g] : 0,
-                'no_hw' => isset($noHwCounts[$g]) ? (int)$noHwCounts[$g] : 0,
+                'total' => isset($counts[$g]) ? (int) $counts[$g] : 0,
+                'no_hw' => isset($noHwCounts[$g]) ? (int) $noHwCounts[$g] : 0,
             ];
         }
     }
@@ -81,16 +94,19 @@ class Base extends Component
         $this->sectionCounts = $sections->map(function ($row) use ($noHwCounts) {
             $sectionValue = $row->section;
             $label = $sectionValue ?: 'Unspecified';
+
             return [
                 'section' => $sectionValue,
                 'label' => $label,
-                'count' => (int)$row->total,
-                'no_hw' => isset($noHwCounts[$sectionValue]) ? (int)$noHwCounts[$sectionValue] : 0,
+                'count' => (int) $row->total,
+                'no_hw' => isset($noHwCounts[$sectionValue]) ? (int) $noHwCounts[$sectionValue] : 0,
             ];
         })->toArray();
         // clear any previously loaded students
         $this->selectedSection = null;
         $this->students = [];
+        $this->pupilSearch = '';
+        $this->selectedSectionPupilCount = 0;
     }
 
     public function clearSectionCounts()
@@ -104,23 +120,61 @@ class Base extends Component
     {
         // $section may be empty string or null for unspecified
         $this->selectedSection = $section;
+        $this->pupilSearch = '';
+        $this->refreshStudents();
+    }
 
+    protected function refreshStudents()
+    {
         $query = NutritionalStatus::query()->where('grade', $this->selectedGrade);
-        if ($section === '' || is_null($section)) {
+        if ($this->selectedSection === '' || is_null($this->selectedSection)) {
             $query->where(function ($q) {
                 $q->whereNull('section')->orWhere('section', '');
             });
         } else {
-            $query->where('section', $section);
+            $query->where('section', $this->selectedSection);
         }
 
-        $this->students = $query->orderBy('last_name')->get()->toArray();
+        $this->selectedSectionPupilCount = (clone $query)->count();
+
+        $search = trim($this->pupilSearch);
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $like = '%'.$search.'%';
+
+                $q->where('full_name', 'like', $like)
+                    ->orWhere('first_name', 'like', $like)
+                    ->orWhere('last_name', 'like', $like)
+                    ->orWhere('suffix_name', 'like', $like);
+            });
+        }
+
+        $this->students = $query
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get()
+            ->toArray();
+    }
+
+    public function updatedPupilSearch()
+    {
+        if ($this->selectedGrade !== null && $this->selectedSection !== null) {
+            $this->refreshStudents();
+        }
+    }
+
+    public function clearPupilSearch()
+    {
+        $this->pupilSearch = '';
+        $this->refreshStudents();
     }
 
     public function clearStudents()
     {
         $this->selectedSection = null;
         $this->students = [];
+        $this->pupilSearch = '';
+        $this->selectedSectionPupilCount = 0;
     }
 
     public function deleteAllPupils()
@@ -133,14 +187,17 @@ class Base extends Component
         $this->sectionCounts = [];
         $this->selectedSection = null;
         $this->students = [];
+        $this->pupilSearch = '';
+        $this->selectedSectionPupilCount = 0;
         $this->showDeleteAll = false;
         $this->loadGradeCounts();
     }
 
     public function deleteSection()
     {
-        if (!$this->selectedGrade || $this->selectedSection === null) {
+        if (! $this->selectedGrade || $this->selectedSection === null) {
             session()->flash('error', 'No section selected');
+
             return;
         }
 
@@ -162,6 +219,8 @@ class Base extends Component
 
         $this->selectedSection = null;
         $this->students = [];
+        $this->pupilSearch = '';
+        $this->selectedSectionPupilCount = 0;
         $this->loadSectionCounts($this->selectedGrade);
         $this->loadGradeCounts();
     }
@@ -169,8 +228,9 @@ class Base extends Component
     public function deletePupil($studentId)
     {
         $pupil = NutritionalStatus::find($studentId);
-        if (!$pupil) {
+        if (! $pupil) {
             session()->flash('error', 'Pupil not found');
+
             return;
         }
 
@@ -182,15 +242,16 @@ class Base extends Component
 
         $this->loadGradeCounts();
         if ($this->selectedGrade !== null && $this->selectedSection !== null) {
-            $this->loadStudents($this->selectedSection);
+            $this->refreshStudents();
         }
     }
 
     public function startEdit($studentId)
     {
         $pupil = NutritionalStatus::find($studentId);
-        if (!$pupil) {
+        if (! $pupil) {
             session()->flash('error', 'Pupil not found');
+
             return;
         }
 
@@ -214,31 +275,33 @@ class Base extends Component
             'editingWeight' => 'nullable|numeric|min:0',
         ]);
 
-        if (!$this->editingStudent) {
+        if (! $this->editingStudent) {
             session()->flash('error', 'No pupil selected for edit');
+
             return;
         }
 
         $pupil = NutritionalStatus::find($this->editingStudent);
-        if (!$pupil) {
+        if (! $pupil) {
             session()->flash('error', 'Pupil not found');
             $this->cancelEdit();
+
             return;
         }
 
         // Recalculate age to today before computing BMI / HFA
         if ($pupil->birthday) {
-            $dob  = Carbon::parse($pupil->birthday);
-            $now  = Carbon::now();
-            $years  = $dob->diffInYears($now);
+            $dob = Carbon::parse($pupil->birthday);
+            $now = Carbon::now();
+            $years = $dob->diffInYears($now);
             $months = $dob->diffInMonths($now) - ($years * 12);
-            $pupil->age_years  = $years;
+            $pupil->age_years = $years;
             $pupil->age_months = $months;
         }
         $pupil->date_of_weighing = Carbon::today()->toDateString();
 
         $heightCm = $this->editingHeight !== null ? (float) $this->editingHeight : null;
-        $heightM  = $heightCm !== null ? $heightCm / 100 : null;
+        $heightM = $heightCm !== null ? $heightCm / 100 : null;
 
         $pupil->weight = $this->editingWeight;
         $pupil->height = $heightCm;
@@ -252,7 +315,7 @@ class Base extends Component
         // refresh counts and students for current selection
         $this->loadGradeCounts();
         if ($this->selectedGrade !== null && $this->selectedSection !== null) {
-            $this->loadStudents($this->selectedSection);
+            $this->refreshStudents();
         }
 
         $this->cancelEdit();
@@ -262,15 +325,15 @@ class Base extends Component
     {
         // This method is not used by the component logic anymore.
         // Keep it for compatibility if other code calls it.
-        $ageInMonths = (int)$ageInMonths;
-        $height = (float)$height;
+        $ageInMonths = (int) $ageInMonths;
+        $height = (float) $height;
         $gender = strtolower($gender) === 'm' || strtolower($gender) === 'male' ? 'male' : 'female';
 
         $hfa = HfaSimplifiedVersion::where('month', $ageInMonths)
             ->where('gender', $gender)
             ->first();
 
-        if (!$hfa) {
+        if (! $hfa) {
             return null;
         }
 
@@ -303,18 +366,18 @@ class Base extends Component
         }
 
         if ($pupil === null) {
-            if (!$this->editingStudent) {
+            if (! $this->editingStudent) {
                 return null;
             }
             $pupil = NutritionalStatus::find($this->editingStudent);
-            if (!$pupil) {
+            if (! $pupil) {
                 return null;
             }
         }
 
         $ageInMonths = 0;
         if (isset($pupil->age_years) || isset($pupil->age_months)) {
-            $ageInMonths = ((int)($pupil->age_years ?? 0) * 12) + (int)($pupil->age_months ?? 0);
+            $ageInMonths = ((int) ($pupil->age_years ?? 0) * 12) + (int) ($pupil->age_months ?? 0);
         }
 
         $gender = strtolower($pupil->sex ?? 'm') === 'm' ? 'male' : 'female';
@@ -334,7 +397,7 @@ class Base extends Component
                 return strtolower($response->json('status'));
             }
         } catch (\Exception $e) {
-            Log::warning('getBMIStatus API call failed: ' . $e->getMessage());
+            Log::warning('getBMIStatus API call failed: '.$e->getMessage());
         }
 
         return null;
@@ -346,18 +409,18 @@ class Base extends Component
     public function getHFAStatus($pupil = null)
     {
         if ($pupil === null) {
-            if (!$this->editingStudent) {
+            if (! $this->editingStudent) {
                 return null;
             }
             $pupil = NutritionalStatus::find($this->editingStudent);
-            if (!$pupil) {
+            if (! $pupil) {
                 return null;
             }
         }
 
         $ageInMonths = 0;
         if (isset($pupil->age_years) || isset($pupil->age_months)) {
-            $ageInMonths = ((int)($pupil->age_years ?? 0) * 12) + (int)($pupil->age_months ?? 0);
+            $ageInMonths = ((int) ($pupil->age_years ?? 0) * 12) + (int) ($pupil->age_months ?? 0);
         }
 
         $height = $pupil->height;
@@ -371,7 +434,7 @@ class Base extends Component
             ->where('gender', $gender)
             ->first();
 
-        if (!$hfa) {
+        if (! $hfa) {
             return null;
         }
 

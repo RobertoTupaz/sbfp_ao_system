@@ -146,6 +146,12 @@ class Buttons extends Component
             $sheet->mergeCells("M{$positionRow}:N{$positionRow}");
             $sheet->setCellValue("M{$positionRow}", 'School Head');
 
+            $principalRowHeader = 6;
+            $focalNameRowHeader = 7;
+
+            $sheet->setCellValue("H{$principalRowHeader}", "Name of Principal : ".$schoolProfile?->school_head_name ?? '');
+            $sheet->setCellValue("H{$focalNameRowHeader}", "Name of Feeding Focal Person : ".$schoolProfile?->school_focal_name ?? '');
+
             // save spreadsheet to a new temp file so the original template remains unchanged
             $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
             $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
@@ -988,6 +994,167 @@ class Buttons extends Component
         } catch (\Throwable $e) {
             Log::error('Error writing Form2.xlsx: ' . $e->getMessage());
             session()->flash('error', 'Failed to generate Form2.xlsx: ' . $e->getMessage());
+        }
+    }
+
+    public function generateForm2New()
+    {
+        $template = public_path('exel/Form2New.xlsx');
+        if (!file_exists($template)) {
+            session()->flash('error', 'Form2New.xlsx not found in public/exel');
+            Log::error('Form 2 New write failed - template not found: ' . $template);
+            return;
+        }
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($template);
+            $sheet = $spreadsheet->getActiveSheet();
+            $school = auth()->user()->school;
+            $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
+            $districtNum = $school?->district;
+            $schoolNameWithDistrict = trim(($school?->school_name ?? '') . ($districtNum ? ' / ' . $districtNum : ''));
+
+            // The new template stores each header line in a merged cell beginning in column A.
+            $sheet->setCellValue('A6', 'Schools Division Office: Malaybalay City Division');
+            $sheet->setCellValue('A7', 'City/ Municipality/Barangay : Malaybalay City, Bukidnon');
+            $sheet->setCellValue('A8', 'Name of School / School District : ' . $schoolNameWithDistrict);
+            $sheet->setCellValue('A9', 'School ID Number: ' . ($school?->school_id ?? ''));
+            $sheet->setCellValue('A10', 'Date of Start of Feeding: ');
+            $sheet->setCellValue('A11', 'Last Mile School:  ___Y   ___N');
+
+            $grades = ['k', '1', '2', '3', '4', '5', '6', 'non_graded'];
+            $primaryConfig = PrimarySecondaryBeneficiaries::where('name', 'Primary')->first();
+            $primaryClauses = [];
+
+            if ($primaryConfig?->all_kinder)       $primaryClauses[] = "grade = 'k'";
+            if ($primaryConfig?->all_grade_1)      $primaryClauses[] = "grade = '1'";
+            if ($primaryConfig?->all_grade_2)      $primaryClauses[] = "grade = '2'";
+            if ($primaryConfig?->all_grade_3)      $primaryClauses[] = "grade = '3'";
+            if ($primaryConfig?->severely_wasted)  $primaryClauses[] = "nutritional_status = 'severely wasted'";
+            if ($primaryConfig?->wasted)           $primaryClauses[] = "nutritional_status = 'wasted'";
+            if ($primaryConfig?->normal_weight)    $primaryClauses[] = "nutritional_status = 'normal'";
+            if ($primaryConfig?->overweight_obese) $primaryClauses[] = "nutritional_status IN ('overweight','obese')";
+            if ($primaryConfig?->severely_stunted) $primaryClauses[] = "height_for_age = 'severely stunted'";
+            if ($primaryConfig?->stunted)          $primaryClauses[] = "height_for_age = 'stunted'";
+            if ($primaryConfig?->normal_height)    $primaryClauses[] = "height_for_age = 'normal'";
+            if ($primaryConfig?->tall)             $primaryClauses[] = "height_for_age = 'tall'";
+            if ($primaryConfig?->_4ps)             $primaryClauses[] = '_4ps = 1';
+            if ($primaryConfig?->ip)               $primaryClauses[] = 'ip = 1';
+            if ($primaryConfig?->pardo)            $primaryClauses[] = 'pardo = 1';
+
+            $notPrimary = empty($primaryClauses)
+                ? '1'
+                : 'NOT (' . implode(' OR ', $primaryClauses) . ')';
+
+            $sexGroupSql = "CASE
+                WHEN LOWER(TRIM(sex)) IN ('m', 'male') THEN 'm'
+                WHEN LOWER(TRIM(sex)) IN ('f', 'female') THEN 'f'
+            END";
+
+            $statsRaw = NutritionalStatus::where('isBeneficiary', true)
+                ->whereIn('grade', $grades)
+                ->whereRaw("{$sexGroupSql} IS NOT NULL")
+                ->selectRaw("
+                    grade,
+                    {$sexGroupSql} AS sex_group,
+                    SUM(nutritional_status = 'severely wasted')                               AS sw,
+                    SUM(nutritional_status = 'wasted')                                        AS wasted,
+                    SUM(nutritional_status = 'normal')                                        AS normal_weight,
+                    SUM(nutritional_status IN ('overweight','obese'))                          AS overweight_obese,
+                    SUM(height_for_age = 'severely stunted')                                  AS severely_stunted,
+                    SUM(height_for_age = 'stunted')                                           AS stunted,
+                    SUM(height_for_age = 'normal')                                            AS normal_height,
+                    SUM(height_for_age = 'tall')                                              AS tall,
+                    SUM(pardo = 1 AND ({$notPrimary}))                                        AS pardo_cnt,
+                    SUM(height_for_age IN ('stunted','severely stunted') AND ({$notPrimary})) AS stunted_ss,
+                    SUM(_4ps = 1 AND ({$notPrimary}))                                         AS fourps_sec,
+                    SUM(ip = 1 AND ({$notPrimary}))                                           AS ip_cnt,
+                    SUM(dewormed = 1)                                                         AS dewormed_cnt,
+                    SUM(_4ps = 1)                                                             AS fourps_all,
+                    SUM(sbfp_previous_beneficiary = 1)                                        AS prev_ben
+                ")
+                ->groupBy('grade')
+                ->groupByRaw($sexGroupSql)
+                ->get()
+                ->keyBy(fn ($row) => $row->grade . ':' . $row->sex_group);
+
+            $zero = (object) [
+                'sw' => 0,
+                'wasted' => 0,
+                'normal_weight' => 0,
+                'overweight_obese' => 0,
+                'severely_stunted' => 0,
+                'stunted' => 0,
+                'normal_height' => 0,
+                'tall' => 0,
+                'pardo_cnt' => 0,
+                'stunted_ss' => 0,
+                'fourps_sec' => 0,
+                'ip_cnt' => 0,
+                'dewormed_cnt' => 0,
+                'fourps_all' => 0,
+                'prev_ben' => 0,
+            ];
+
+            // Each grade occupies three rows: male, female, and a formula-driven total.
+            $rowMap = [
+                'k' => [14, 15],
+                '1' => [17, 18],
+                '2' => [20, 21],
+                '3' => [23, 24],
+                '4' => [26, 27],
+                '5' => [29, 30],
+                '6' => [32, 33],
+                'non_graded' => [35, 36],
+            ];
+            $columnMap = [
+                3 => 'sw',
+                4 => 'wasted',
+                5 => 'normal_weight',
+                6 => 'overweight_obese',
+                7 => 'severely_stunted',
+                8 => 'stunted',
+                9 => 'normal_height',
+                10 => 'tall',
+                11 => 'pardo_cnt',
+                12 => 'stunted_ss',
+                13 => 'fourps_sec',
+                14 => 'ip_cnt',
+                15 => 'dewormed_cnt',
+                16 => 'fourps_all',
+                17 => 'prev_ben',
+            ];
+
+            foreach ($rowMap as $grade => [$maleRow, $femaleRow]) {
+                foreach (['m' => $maleRow, 'f' => $femaleRow] as $sex => $row) {
+                    $stats = $statsRaw->get($grade . ':' . $sex) ?? $zero;
+
+                    foreach ($columnMap as $column => $field) {
+                        $sheet->setCellValueByColumnAndRow($column, $row, (int) ($stats->$field ?? 0));
+                    }
+                }
+            }
+
+            // Total and grand-total rows remain formulas supplied by the official template.
+            $sheet->setCellValue('A44', $schoolProfile?->school_focal_name ?? '');
+            $sheet->setCellValue('K44', $schoolProfile?->school_head_name ?? '');
+
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', $school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'Form_2_New-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
+            $outFile = public_path('downloaded_exel/' . $outFileName);
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($outFile);
+
+            session()->flash('success', 'Form 2 New generated for download.');
+            Log::info($outFileName . ' successfully written.');
+
+            $downloadUrl = asset('downloaded_exel/' . $outFileName);
+            $this->dispatch('form2-new-ready', $downloadUrl);
+        } catch (\Throwable $e) {
+            Log::error('Error writing Form2New.xlsx: ' . $e->getMessage());
+            session()->flash('error', 'Failed to generate Form2New.xlsx: ' . $e->getMessage());
         }
     }
 

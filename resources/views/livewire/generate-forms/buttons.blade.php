@@ -1,7 +1,7 @@
 <div class="max-w-5xl mx-auto px-4">
     <div class="flex items-center gap-2 mb-6">
         <h3 class="text-2xl font-semibold text-gray-800">Generate Forms</h3>
-        <x-feature-help>Generate official DepEd SBFP forms as downloadable Excel files based on the current beneficiary list. Available forms: SNS Elementary, SNS High School, Form 1 (Pupils/Nutritional Status), and Form 7 PTR (School Level).</x-feature-help>
+        <x-feature-help>Generate official DepEd SBFP forms as downloadable Excel files based on the current beneficiary list. Available forms: SNS Elementary, SNS High School, Form 1 (Pupils/Nutritional Status), Form 2, Form 2 New, and Form 7 PTR (School Level).</x-feature-help>
     </div>
 
     {{-- <div class="mb-4">
@@ -167,6 +167,37 @@
             </div>
         </a>
 
+        <a href="#" role="button" aria-label="Generate Form 2 New" wire:click.prevent="generateForm2New"
+            wire:loading.attr="disabled" wire:target="generateForm2New"
+            class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
+            <div class="flex items-center justify-center mb-4">
+                <div wire:loading wire:target="generateForm2New" class="flex items-center justify-center">
+                    <svg class="animate-spin h-12 w-12 text-emerald-600" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="generateForm2New">
+                    <svg class="w-12 h-12 text-emerald-600 group-hover:text-emerald-700"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 12h6m-6 4h6M7 8h10M5 6h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="text-lg font-medium text-gray-800">
+                <span wire:loading.remove wire:target="generateForm2New">Form 2 New</span>
+                <span wire:loading wire:target="generateForm2New">Generating...</span>
+            </div>
+            <div class="text-sm text-gray-500 mt-2">
+                <span wire:loading.remove wire:target="generateForm2New">Generate Form 2 with male and female grade rows</span>
+                <span wire:loading wire:target="generateForm2New">Please wait — preparing download</span>
+            </div>
+        </a>
+
         {{-- <a href="#" role="button" aria-label="Generate Form 3"
             class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center">
             <div class="flex items-center justify-center mb-4">
@@ -217,6 +248,12 @@
         }
 
         window.addEventListener('form2-ready', function(e) {
+            var url = e && e.detail && e.detail.url ? e.detail.url : null;
+            if (!url && e && e.detail) url = e.detail;
+            _gf_trigger_download(url);
+        });
+
+        window.addEventListener('form2-new-ready', function(e) {
             var url = e && e.detail && e.detail.url ? e.detail.url : null;
             if (!url && e && e.detail) url = e.detail;
             _gf_trigger_download(url);

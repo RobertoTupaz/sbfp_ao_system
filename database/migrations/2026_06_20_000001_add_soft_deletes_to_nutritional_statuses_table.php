@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    public function _up(): void
     {
         Schema::table('nutritional_statuses', function (Blueprint $table) {
             $table->softDeletes();
@@ -17,7 +17,7 @@ return new class extends Migration
         });
     }
 
-    public function down(): void
+    public function _down(): void
     {
         Schema::table('nutritional_statuses', function (Blueprint $table) {
             $table->dropConstrainedForeignId('deleted_by');

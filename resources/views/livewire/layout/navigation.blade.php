@@ -37,10 +37,6 @@ new class extends Component {
                             wire:navigate>
                             {{ __('Track Enrollees') }}
                         </x-nav-link>
-                        <x-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')"
-                            wire:navigate>
-                            {{ __('Retain Deleted') }}
-                        </x-nav-link>
                     @endif
                     @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                         <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
@@ -63,6 +59,12 @@ new class extends Component {
                     <x-nav-link :href="route('school_profile')" :active="request()->routeIs('school_profile')" wire:navigate>
                         {{ __('School Profile') }}
                     </x-nav-link>
+                    @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                        <x-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')"
+                            wire:navigate>
+                            {{ __('Retain Delete') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -127,9 +129,6 @@ new class extends Component {
                     <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
                         {{ __('Track Enrollees') }}
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')" wire:navigate>
-                        {{ __('Retain Deleted') }}
-                    </x-responsive-nav-link>
                 @endif
                 @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                     <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
@@ -150,6 +149,11 @@ new class extends Component {
                 <x-responsive-nav-link :href="route('school_profile')" :active="request()->routeIs('school_profile')" wire:navigate>
                     {{ __('School Profile') }}
                 </x-responsive-nav-link>
+                @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                    <x-responsive-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')" wire:navigate>
+                        {{ __('Retain Delete') }}
+                    </x-responsive-nav-link>
+                @endif
         </div>
 
         <!-- Responsive Settings Options -->

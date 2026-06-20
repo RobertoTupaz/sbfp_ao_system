@@ -11,15 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('nutritional_statuses', function (Blueprint $table) {
+        if (! Schema::hasColumn('nutritional_statuses', 'deleted_at')) {
             Schema::table('nutritional_statuses', function (Blueprint $table) {
                 $table->softDeletes();
+            });
+        }
+
+        if (! Schema::hasColumn('nutritional_statuses', 'deleted_by')) {
+            Schema::table('nutritional_statuses', function (Blueprint $table) {
                 $table->foreignId('deleted_by')
                     ->nullable()
                     ->constrained('users')
                     ->nullOnDelete();
             });
-        });
+        }
     }
 
     /**
@@ -27,11 +32,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('nutritional_statuses', function (Blueprint $table) {
+        if (Schema::hasColumn('nutritional_statuses', 'deleted_by')) {
             Schema::table('nutritional_statuses', function (Blueprint $table) {
                 $table->dropConstrainedForeignId('deleted_by');
+            });
+        }
+
+        if (Schema::hasColumn('nutritional_statuses', 'deleted_at')) {
+            Schema::table('nutritional_statuses', function (Blueprint $table) {
                 $table->dropSoftDeletes();
             });
-        });
+        }
     }
 };

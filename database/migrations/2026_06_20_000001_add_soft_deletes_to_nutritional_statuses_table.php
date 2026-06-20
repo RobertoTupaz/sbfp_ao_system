@@ -1,27 +1,22 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function _up_(): void
+    /**
+     * This migration was superseded by the later 2026_06_20_215050 migration.
+     *
+     * Keep this as an explicit no-op because it may already be present in the
+     * migrations table on deployed environments.
+     */
+    public function up(): void
     {
-        Schema::table('nutritional_statuses', function (Blueprint $table) {
-            $table->softDeletes();
-            $table->foreignId('deleted_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        //
     }
 
-    public function _down_(): void
+    public function down(): void
     {
-        Schema::table('nutritional_statuses', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('deleted_by');
-            $table->dropSoftDeletes();
-        });
+        //
     }
 };

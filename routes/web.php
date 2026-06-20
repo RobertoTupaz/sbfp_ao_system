@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
-use Database\Seeders\NutritionalStatusSeeder;
 use Livewire\Volt\Volt;
 
 /*
@@ -34,6 +32,10 @@ Route::view('/track/enrollees', 'trackEnrollees')
     ->middleware(['auth', 'verified'])
     ->name('track_enrollees');
 
+Route::view('/retain-deleted', 'retainDeleted')
+    ->middleware(['auth', 'verified'])
+    ->name('retain_deleted');
+
 Route::view('/profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
@@ -52,4 +54,4 @@ Route::view('/school-profile', 'school_profile')
 
 Route::get('/run-nutritional-seeder', [App\Http\Controllers\Controller::class, 'nsSeeder'])->name('run.nutritional.seeder');
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

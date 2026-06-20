@@ -60,7 +60,7 @@
                 @if($showDeleteAll)
                     <button
                         wire:click="deleteAllPupils"
-                        wire:confirm="Delete ALL pupils from the database? This cannot be undone."
+                        wire:confirm="Move ALL pupils to Retain Deleted? They can be restored later."
                         class="flex flex-col items-center px-4 py-2 rounded-lg border text-sm font-medium transition-all bg-red-600 border-red-600 text-white hover:bg-red-700">
                         <span>Delete All</span>
                         <span class="text-xs mt-0.5 text-red-200">pupils</span>
@@ -113,17 +113,37 @@
     @if($selectedGrade && $selectedSection !== null)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="flex flex-col gap-4 px-5 py-4 border-b border-gray-100 lg:flex-row lg:items-center lg:justify-between">
-                <h2 class="font-semibold text-gray-700">
-                    {{ $selectedGrade === 'k' ? 'Kinder' : 'Grade '.$selectedGrade }}
-                    @if($selectedSection) &mdash; {{ $selectedSection }} @endif
-                    <span class="ml-2 text-sm font-normal text-gray-400">
-                        @if(trim($pupilSearch) !== '')
-                            {{ count($students) }} of {{ $selectedSectionPupilCount }} pupils
-                        @else
-                            {{ $selectedSectionPupilCount }} pupils
-                        @endif
-                    </span>
-                </h2>
+                <div class="space-y-3">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-gray-500">BMI-for-age (% of section)</span>
+                            <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Severely Wasted {{ number_format($nutritionalStatusPercentages['severely wasted'], 1) }}%</span>
+                            <span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">Wasted {{ number_format($nutritionalStatusPercentages['wasted'], 1) }}%</span>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Normal {{ number_format($nutritionalStatusPercentages['normal'], 1) }}%</span>
+                            <span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Overweight {{ number_format($nutritionalStatusPercentages['overweight'], 1) }}%</span>
+                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Obese {{ number_format($nutritionalStatusPercentages['obese'], 1) }}%</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Height-for-age (% of section)</span>
+                            <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Severely Stunted {{ number_format($heightForAgePercentages['severely stunted'], 1) }}%</span>
+                            <span class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">Stunted {{ number_format($heightForAgePercentages['stunted'], 1) }}%</span>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Normal {{ number_format($heightForAgePercentages['normal'], 1) }}%</span>
+                            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Tall {{ number_format($heightForAgePercentages['tall'], 1) }}%</span>
+                        </div>
+                    </div>
+
+                    <h2 class="font-semibold text-gray-700">
+                        {{ $selectedGrade === 'k' ? 'Kinder' : 'Grade '.$selectedGrade }}
+                        @if($selectedSection) &mdash; {{ $selectedSection }} @endif
+                        <span class="ml-2 text-sm font-normal text-gray-400">
+                            @if(trim($pupilSearch) !== '')
+                                {{ count($students) }} of {{ $selectedSectionPupilCount }} pupils
+                            @else
+                                {{ $selectedSectionPupilCount }} pupils
+                            @endif
+                        </span>
+                    </h2>
+                </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <div class="relative">
                         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,7 +171,7 @@
                     @if($selectedSectionPupilCount > 0)
                         <button
                             wire:click="deleteSection"
-                            wire:confirm="Delete all {{ $selectedSectionPupilCount }} pupils in this section? This cannot be undone."
+                            wire:confirm="Move all {{ $selectedSectionPupilCount }} pupils in this section to Retain Deleted? They can be restored later."
                             class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-red-200 text-red-500 text-xs font-medium rounded-lg hover:bg-red-50 hover:border-red-400 hover:text-red-700 transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             Delete Section
@@ -306,7 +326,7 @@
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 Edit
                                             </button>
-                                            <button wire:click="deletePupil({{ $stu['id'] }})" wire:confirm="Delete this pupil? This cannot be undone."
+                                            <button wire:click="deletePupil({{ $stu['id'] }})" wire:confirm="Move this pupil to Retain Deleted? The pupil can be restored later."
                                                 class="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-red-200 text-red-500 text-xs font-medium rounded-lg hover:bg-red-50 hover:border-red-400 hover:text-red-700 transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                                 Delete

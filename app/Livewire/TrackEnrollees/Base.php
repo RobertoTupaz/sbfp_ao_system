@@ -27,6 +27,21 @@ class Base extends Component
 
     public $selectedSectionPupilCount = 0;
 
+    public $nutritionalStatusPercentages = [
+        'severely wasted' => 0,
+        'wasted' => 0,
+        'normal' => 0,
+        'overweight' => 0,
+        'obese' => 0,
+    ];
+
+    public $heightForAgePercentages = [
+        'severely stunted' => 0,
+        'stunted' => 0,
+        'normal' => 0,
+        'tall' => 0,
+    ];
+
     public $showDeleteAll = false;
 
     // editing state
@@ -107,6 +122,7 @@ class Base extends Component
         $this->students = [];
         $this->pupilSearch = '';
         $this->selectedSectionPupilCount = 0;
+        $this->resetSectionPercentages();
     }
 
     public function clearSectionCounts()
@@ -136,6 +152,7 @@ class Base extends Component
         }
 
         $this->selectedSectionPupilCount = (clone $query)->count();
+        $this->loadSectionPercentages($query);
 
         $search = trim($this->pupilSearch);
         if ($search !== '') {
@@ -154,6 +171,54 @@ class Base extends Component
             ->orderBy('first_name')
             ->get()
             ->toArray();
+    }
+
+    protected function loadSectionPercentages($query)
+    {
+        $nutritionalCounts = (clone $query)
+            ->selectRaw('LOWER(TRIM(nutritional_status)) as status, COUNT(*) as total')
+            ->whereNotNull('nutritional_status')
+            ->groupByRaw('LOWER(TRIM(nutritional_status))')
+            ->pluck('total', 'status');
+
+        $heightForAgeCounts = (clone $query)
+            ->selectRaw('LOWER(TRIM(height_for_age)) as status, COUNT(*) as total')
+            ->whereNotNull('height_for_age')
+            ->groupByRaw('LOWER(TRIM(height_for_age))')
+            ->pluck('total', 'status');
+
+        foreach (array_keys($this->nutritionalStatusPercentages) as $status) {
+            $this->nutritionalStatusPercentages[$status] = $this->percentage(
+                (int) $nutritionalCounts->get($status, 0)
+            );
+        }
+
+        foreach (array_keys($this->heightForAgePercentages) as $status) {
+            $this->heightForAgePercentages[$status] = $this->percentage(
+                (int) $heightForAgeCounts->get($status, 0)
+            );
+        }
+    }
+
+    protected function percentage(int $count): float
+    {
+        if ($this->selectedSectionPupilCount === 0) {
+            return 0;
+        }
+
+        return round(($count / $this->selectedSectionPupilCount) * 100, 1);
+    }
+
+    protected function resetSectionPercentages()
+    {
+        $this->nutritionalStatusPercentages = array_fill_keys(
+            array_keys($this->nutritionalStatusPercentages),
+            0
+        );
+        $this->heightForAgePercentages = array_fill_keys(
+            array_keys($this->heightForAgePercentages),
+            0
+        );
     }
 
     public function updatedPupilSearch()
@@ -175,13 +240,17 @@ class Base extends Component
         $this->students = [];
         $this->pupilSearch = '';
         $this->selectedSectionPupilCount = 0;
+        $this->resetSectionPercentages();
     }
 
     public function deleteAllPupils()
     {
-        SwappedPupils::query()->delete();
-        NutritionalStatus::query()->delete();
-        session()->flash('success', 'All pupils deleted');
+        DB::transaction(function () {
+            SwappedPupils::query()->delete();
+            NutritionalStatus::query()->update(['deleted_by' => auth()->id()]);
+            NutritionalStatus::query()->delete();
+        });
+        session()->flash('success', 'All pupils moved to Retain Deleted');
 
         $this->selectedGrade = null;
         $this->sectionCounts = [];
@@ -189,6 +258,7 @@ class Base extends Component
         $this->students = [];
         $this->pupilSearch = '';
         $this->selectedSectionPupilCount = 0;
+        $this->resetSectionPercentages();
         $this->showDeleteAll = false;
         $this->loadGradeCounts();
     }
@@ -210,12 +280,15 @@ class Base extends Component
             $query->where('section', $this->selectedSection);
         }
 
-        $ids = $query->pluck('id');
-        SwappedPupils::whereIn('old_pupil_id', $ids)->orWhereIn('new_pupil_id', $ids)->delete();
-        NutritionalStatus::whereIn('id', $ids)->delete();
+        DB::transaction(function () use ($query) {
+            $ids = (clone $query)->pluck('id');
+            SwappedPupils::whereIn('old_pupil_id', $ids)->orWhereIn('new_pupil_id', $ids)->delete();
+            NutritionalStatus::whereIn('id', $ids)->update(['deleted_by' => auth()->id()]);
+            NutritionalStatus::whereIn('id', $ids)->delete();
+        });
 
         $sectionLabel = $this->selectedSection ?: 'Unspecified';
-        session()->flash('success', "Section \"{$sectionLabel}\" deleted");
+        session()->flash('success', "Section \"{$sectionLabel}\" moved to Retain Deleted");
 
         $this->selectedSection = null;
         $this->students = [];
@@ -234,11 +307,13 @@ class Base extends Component
             return;
         }
 
-        SwappedPupils::where('old_pupil_id', $pupil->id)
-            ->orWhere('new_pupil_id', $pupil->id)
-            ->delete();
-        $pupil->delete();
-        session()->flash('success', 'Pupil deleted');
+        DB::transaction(function () use ($pupil) {
+            SwappedPupils::where('old_pupil_id', $pupil->id)
+                ->orWhere('new_pupil_id', $pupil->id)
+                ->delete();
+            $pupil->delete();
+        });
+        session()->flash('success', 'Pupil moved to Retain Deleted');
 
         $this->loadGradeCounts();
         if ($this->selectedGrade !== null && $this->selectedSection !== null) {

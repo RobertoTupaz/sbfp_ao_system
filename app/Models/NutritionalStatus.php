@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class NutritionalStatus extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'nutritional_statuses';
+
     protected $fillable = [
         'full_name',
         'last_name',
@@ -34,6 +36,7 @@ class NutritionalStatus extends Model
         'parent_consent_milk',
         'sbfp_previous_beneficiary',
         'isBeneficiary',
+        'deleted_by',
     ];
 
     protected $casts = [
@@ -52,4 +55,19 @@ class NutritionalStatus extends Model
         'sbfp_previous_beneficiary' => 'boolean',
         'isBeneficiary' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (NutritionalStatus $pupil) {
+            if (! $pupil->isForceDeleting() && ! $pupil->deleted_by && auth()->check()) {
+                $pupil->deleted_by = auth()->id();
+                $pupil->saveQuietly();
+            }
+        });
+    }
+
+    public function deletedBy()
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
+    }
 }

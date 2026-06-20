@@ -16,7 +16,9 @@
         </div>
     @else
         <div>
-            School ID: {{ auth()->user()->school_id ?? 'Not set' }}
+            {{ auth()->user()->school?->school_name ?? 'School not found' }}
+            :
+            {{ auth()->user()->school_id ?? 'Not set' }}
         </div>
     @endif
 </div>

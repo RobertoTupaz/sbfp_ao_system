@@ -37,6 +37,10 @@ new class extends Component {
                             wire:navigate>
                             {{ __('Track Enrollees') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')"
+                            wire:navigate>
+                            {{ __('Retain Deleted') }}
+                        </x-nav-link>
                     @endif
                     @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                         <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
@@ -122,6 +126,9 @@ new class extends Component {
                 @if(!(auth()->check() && auth()->user()->role === 'focal'))
                     <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
                         {{ __('Track Enrollees') }}
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')" wire:navigate>
+                        {{ __('Retain Deleted') }}
                     </x-responsive-nav-link>
                 @endif
                 @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))

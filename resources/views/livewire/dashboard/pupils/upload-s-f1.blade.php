@@ -75,6 +75,8 @@
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Birthdate</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Age (Yrs)</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Age (Mos)</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Weight (kg)</th>
+                                <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Height (cm)</th>
                                 <th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">IP</th>
                                 <th class="border border-gray-300 py-2 text-center text-sm font-semibold">4Ps</th>
                                 <th class="border border-gray-300 py-2 text-center text-sm font-semibold">PARDO</th>
@@ -112,6 +114,12 @@
                                     </td>
                                     <td class="border border-gray-300 px-2 py-2">
                                         <input type="text" wire:model.live="rows.{{ $index }}.age_months" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                    </td>
+                                    <td class="border border-gray-300 px-2 py-2">
+                                        <input type="number" step="0.01" min="0" wire:model.live="rows.{{ $index }}.weight" class="w-24 px-2 py-1 border border-gray-300 rounded text-sm">
+                                    </td>
+                                    <td class="border border-gray-300 px-2 py-2">
+                                        <input type="number" step="0.01" min="0" wire:model.live="rows.{{ $index }}.height" class="w-24 px-2 py-1 border border-gray-300 rounded text-sm">
                                     </td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-700">
                                         {{ !empty($row['ip']) ? 'Yes' : 'No' }}

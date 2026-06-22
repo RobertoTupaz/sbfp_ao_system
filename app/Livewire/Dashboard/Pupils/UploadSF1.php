@@ -2,27 +2,34 @@
 
 namespace App\Livewire\Dashboard\Pupils;
 
+use App\Models\BmiVersionSimplefied;
+use App\Models\HfaSimplifiedVersion;
 use App\Models\NutritionalStatus;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
 
 class UploadSF1 extends Component
 {
     use WithFileUploads;
 
     public $excel;
+
     public $rows = [];
+
     public $preview = false;
+
     public $changeAllGrade = '';
+
     public $changeAllSection = '';
 
     protected $rules = [
-        'excel' => 'required|file|mimes:xlsx,xls,csv'
+        'excel' => 'required|file|mimes:xlsx,xls,csv',
     ];
 
     public function updatedExcel()
@@ -41,7 +48,9 @@ class UploadSF1 extends Component
 
     public function updatedChangeAllGrade($value)
     {
-        if ($value === '') return;
+        if ($value === '') {
+            return;
+        }
         foreach ($this->rows as $index => $row) {
             $this->rows[$index]['grade'] = $value;
         }
@@ -106,6 +115,7 @@ class UploadSF1 extends Component
             $spreadsheet = IOFactory::load($path);
         } catch (\Exception $e) {
             $this->addError('excel', 'Unable to read spreadsheet file.');
+
             return;
         }
 
@@ -116,14 +126,14 @@ class UploadSF1 extends Component
         $row = 7;
         $malesBatchDone = false;
 
-        //pupils grade
-        $grade = $this->processGrade($sheet->getCell('AE' . 4)->getValue());
-        //pupils section
-        $section = trim((string) $sheet->getCell('AM' . 4)->getValue());
-    
+        // pupils grade
+        $grade = $this->processGrade($sheet->getCell('AE'. 4)->getValue());
+        // pupils section
+        $section = trim((string) $sheet->getCell('AM'. 4)->getValue());
+
         while (true) {
-            $lrn = trim((string) $sheet->getCell('A' . $row)->getValue());
-            $sex = trim((string) $sheet->getCell('G' . $row)->getValue());
+            $lrn = trim((string) $sheet->getCell('A'.$row)->getValue());
+            $sex = trim((string) $sheet->getCell('G'.$row)->getValue());
 
             if ($malesBatchDone && $sex == null) {
                 break;
@@ -131,38 +141,11 @@ class UploadSF1 extends Component
             if ($lrn < 2000 || $lrn === null) {
                 $malesBatchDone = true;
                 $row++;
+
                 continue;
             }
 
-            $fullname = trim((string) $sheet->getCell('C' . $row)->getValue());
-            $sex = trim((string) $sheet->getCell('G' . $row)->getValue());
-            $birthdate = trim((string) $sheet->getCell('H' . $row)->getValue());
-            $ip = trim((string) $sheet->getCell('N' . $row)->getValue());
-
-            // Parse fullname and calculate age
-            $nameParts = $this->parseFullname($fullname);
-            $parsedBirthdate = $this->parseDate($birthdate);
-            $ageData = $this->calculateAge($parsedBirthdate);
-
-            $this->rows[] = [
-                'lrn' => $lrn,
-                'fullname' => $fullname,
-                'last_name' => $nameParts['last_name'],
-                'first_name' => $nameParts['first_name'],
-                'middle_name' => $nameParts['middle_name'],
-                'sex' => strtolower($sex),
-                'birthdate' => $parsedBirthdate,
-                'age_years' => $ageData['years'],
-                'age_months' => $ageData['months'],
-                'ip' => $ip,
-                'grade' => $grade,
-                'section' => $section,
-                'row' => $row,
-                '_4ps' => false,
-                'pardo' => false,
-                'dewormed' => false,
-                'sbfp_previous_beneficiary' => false,
-            ];
+            $this->rows[] = $this->parseSf1Row($sheet, $row, $grade, $section);
 
             $row++;
         }
@@ -174,8 +157,9 @@ class UploadSF1 extends Component
     {
         // If rows not parsed yet, parse from uploaded file first
         if (empty($this->rows)) {
-            if (!$this->excel) {
+            if (! $this->excel) {
                 $this->addError('excel', 'Please select an Excel file to upload.');
+
                 return;
             }
 
@@ -187,89 +171,186 @@ class UploadSF1 extends Component
                 $spreadsheet = IOFactory::load($path);
             } catch (\Exception $e) {
                 $this->addError('excel', 'Unable to read spreadsheet file.');
+
                 return;
             }
 
             $sheet = $this->getSf1Sheet($spreadsheet);
 
-            $grade = $this->processGrade($sheet->getCell('AE' . 4)->getValue());
-            $section = trim((string) $sheet->getCell('AM' . 4)->getValue());
+            $grade = $this->processGrade($sheet->getCell('AE'. 4)->getValue());
+            $section = trim((string) $sheet->getCell('AM'. 4)->getValue());
 
             $this->rows = [];
 
             $row = 7;
             while (true) {
-                $lrn = trim((string) $sheet->getCell('A' . $row)->getValue());
+                $lrn = trim((string) $sheet->getCell('A'.$row)->getValue());
                 if ($lrn === '' || $lrn === null) {
                     break;
                 }
 
-                $fullname = trim((string) $sheet->getCell('C' . $row)->getValue());
-                $sex = trim((string) $sheet->getCell('G' . $row)->getValue());
-                $birthdate = trim((string) $sheet->getCell('H' . $row)->getValue());
-                $ip = trim((string) $sheet->getCell('N' . $row)->getValue());
-
-                // Parse fullname and calculate age
-                $nameParts = $this->parseFullname($fullname);
-                $parsedBirthdate = $this->parseDate($birthdate);
-                $ageData = $this->calculateAge($parsedBirthdate);
-
-                $this->rows[] = [
-                    'lrn' => $lrn,
-                    'fullname' => $fullname,
-                    'last_name' => $nameParts['last_name'],
-                    'first_name' => $nameParts['first_name'],
-                    'middle_name' => $nameParts['middle_name'],
-                    'sex' => $sex,
-                    'birthdate' => $parsedBirthdate,
-                    'age_years' => $ageData['years'],
-                    'age_months' => $ageData['months'],
-                    'ip' => $ip,
-                    'grade' => $grade,
-                    'section' => $section,
-                    'row' => $row,
-                    '_4ps' => false,
-                    'pardo' => false,
-                    'dewormed' => false,
-                    'sbfp_previous_beneficiary' => false,
-                ];
+                $this->rows[] = $this->parseSf1Row($sheet, $row, $grade, $section);
 
                 $row++;
             }
         }
 
-        // Create NutritionalStatus records from parsed rows
-        foreach ($this->rows as $row) {
-            NutritionalStatus::create([
-                'full_name' => $row['fullname'] ?? null,
-                'last_name' => $row['last_name'] ?? null,
-                'first_name' => $row['first_name'] ?? null,
-                'suffix_name' => $row['middle_name'] ?? null,
-                'sex' => $row['sex'] ?? null,
-                'birthday' => $row['birthdate'] ?? null,
-                'weight' => null,
-                'age_years' => $row['age_years'] ?? null,
-                'age_months' => $row['age_months'] ?? null,
-                'grade' => isset($row['grade']) ? $this->normalizeGrade($row['grade']) : null,
-                'section' => $row['section'] ?? null,
-                'ip' => !empty($row['ip']) ? true : false,
-                '_4ps' => !empty($row['_4ps']),
-                'pardo' => !empty($row['pardo']),
-                'dewormed' => !empty($row['dewormed']),
-                'sbfp_previous_beneficiary' => !empty($row['sbfp_previous_beneficiary']),
-            ]);
-        }
+        DB::transaction(function () {
+            foreach ($this->rows as $row) {
+                $measurements = $this->calculateNutritionalData($row);
+
+                NutritionalStatus::create([
+                    'full_name' => $row['fullname'] ?? null,
+                    'last_name' => $row['last_name'] ?? null,
+                    'first_name' => $row['first_name'] ?? null,
+                    'suffix_name' => $row['middle_name'] ?? null,
+                    'sex' => $this->normalizeSex($row['sex'] ?? null),
+                    'birthday' => $row['birthdate'] ?? null,
+                    'weight' => $measurements['weight'],
+                    'height' => $measurements['height'],
+                    'age_years' => $row['age_years'] ?? null,
+                    'age_months' => $row['age_months'] ?? null,
+                    'bmi' => $measurements['bmi'],
+                    'nutritional_status' => $measurements['nutritional_status'],
+                    'height_for_age' => $measurements['height_for_age'],
+                    'grade' => isset($row['grade']) ? $this->normalizeGrade($row['grade']) : null,
+                    'section' => $row['section'] ?? null,
+                    'ip' => $this->parseBoolean($row['ip'] ?? false),
+                    '_4ps' => $this->parseBoolean($row['_4ps'] ?? false),
+                    'pardo' => $this->parseBoolean($row['pardo'] ?? false),
+                    'dewormed' => $this->parseBoolean($row['dewormed'] ?? false),
+                    'sbfp_previous_beneficiary' => $this->parseBoolean($row['sbfp_previous_beneficiary'] ?? false),
+                ]);
+            }
+        });
 
         // Save parsed data to JSON for reference
-        $filename = 'uploads/sf1_' . now()->format('Ymd_His') . '.json';
+        $filename = 'uploads/sf1_'.now()->format('Ymd_His').'.json';
         Storage::put($filename, json_encode($this->rows, JSON_PRETTY_PRINT));
 
-        session()->flash('message', count($this->rows) . ' records imported successfully. Data saved to storage/' . $filename);
+        session()->flash('message', count($this->rows).' records imported successfully. Data saved to storage/'.$filename);
 
         // Reset after save
         $this->excel = null;
         $this->rows = [];
         $this->preview = false;
+    }
+
+    protected function parseSf1Row(Worksheet $sheet, int $row, $grade, string $section): array
+    {
+        $fullname = trim((string) $sheet->getCell('C'.$row)->getValue());
+        $birthdate = $this->parseDate($sheet->getCell('H'.$row)->getValue());
+        $nameParts = $this->parseFullname($fullname);
+        $ageData = $this->calculateAge($birthdate);
+
+        return [
+            'lrn' => trim((string) $sheet->getCell('A'.$row)->getValue()),
+            'fullname' => $fullname,
+            'last_name' => $nameParts['last_name'],
+            'first_name' => $nameParts['first_name'],
+            'middle_name' => $nameParts['middle_name'],
+            'sex' => $this->normalizeSex($sheet->getCell('G'.$row)->getValue()),
+            'birthdate' => $birthdate,
+            'age_years' => $ageData['years'],
+            'age_months' => $ageData['months'],
+            'ip' => $sheet->getCell('N'.$row)->getValue(),
+            'grade' => $grade,
+            'section' => $section,
+            'row' => $row,
+            'weight' => $this->parseMeasurement($sheet->getCell('AV'.$row)->getCalculatedValue()),
+            'height' => $this->parseMeasurement($sheet->getCell('AW'.$row)->getCalculatedValue()),
+            'dewormed' => $this->parseBoolean($sheet->getCell('AX'.$row)->getCalculatedValue()),
+            '_4ps' => $this->parseBoolean($sheet->getCell('AY'.$row)->getCalculatedValue()),
+            'sbfp_previous_beneficiary' => $this->parseBoolean($sheet->getCell('AZ'.$row)->getCalculatedValue()),
+            'pardo' => false,
+        ];
+    }
+
+    protected function calculateNutritionalData(array $row): array
+    {
+        $weight = $this->parseMeasurement($row['weight'] ?? null);
+        $height = $this->parseMeasurement($row['height'] ?? null);
+        $ageInMonths = ((int) ($row['age_years'] ?? 0) * 12) + (int) ($row['age_months'] ?? 0);
+        $sex = $this->normalizeSex($row['sex'] ?? null);
+
+        $bmi = null;
+        $nutritionalStatus = null;
+        $heightForAge = null;
+
+        if ($weight !== null && $height !== null && $height > 0) {
+            $heightInMeters = $height / 100;
+            $bmi = round($weight / ($heightInMeters * $heightInMeters), 2);
+
+            $bmiReference = BmiVersionSimplefied::where('months', $ageInMonths)
+                ->where('sex', $sex)
+                ->first();
+
+            if ($bmiReference) {
+                $nutritionalStatus = match (true) {
+                    $bmi < $bmiReference->sd_minus_3 => 'Severely Wasted',
+                    $bmi < $bmiReference->sd_minus_2 => 'Wasted',
+                    $bmi <= $bmiReference->sd_plus_2 => 'Normal',
+                    $bmi <= $bmiReference->sd_plus_3 => 'Overweight',
+                    default => 'Obese',
+                };
+            }
+        }
+
+        if ($height !== null && $ageInMonths > 0 && in_array($sex, ['m', 'f'], true)) {
+            $hfaReference = HfaSimplifiedVersion::where('month', $ageInMonths)
+                ->where('gender', $sex === 'm' ? 'male' : 'female')
+                ->first();
+
+            if ($hfaReference) {
+                $heightForAge = match (true) {
+                    $height < $hfaReference->less_negative_3sd => 'Severely Stunted',
+                    $height <= $hfaReference->to_less_negative_2sd => 'Stunted',
+                    $height <= $hfaReference->to_positive_2sd => 'Normal',
+                    default => 'Tall',
+                };
+            }
+        }
+
+        return [
+            'weight' => $weight,
+            'height' => $height,
+            'bmi' => $bmi,
+            'nutritional_status' => $nutritionalStatus,
+            'height_for_age' => $heightForAge,
+        ];
+    }
+
+    protected function parseMeasurement($value): ?float
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        $value = str_replace(',', '', trim((string) $value));
+
+        return is_numeric($value) && (float) $value > 0 ? (float) $value : null;
+    }
+
+    protected function parseBoolean($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        $value = strtolower(trim((string) $value));
+
+        return ! in_array($value, ['', '0', 'no', 'n', 'false'], true);
+    }
+
+    protected function normalizeSex($value): ?string
+    {
+        $value = strtolower(trim((string) $value));
+
+        return match ($value) {
+            'm', 'male' => 'm',
+            'f', 'female' => 'f',
+            default => $value !== '' ? $value : null,
+        };
     }
 
     protected function parseDate($dateValue)
@@ -281,10 +362,11 @@ class UploadSF1 extends Component
         try {
             // Handle various date formats
             $dateValue = trim((string) $dateValue);
-            
+
             // If it's numeric (Excel date serial), convert it
             if (is_numeric($dateValue) && $dateValue > 0) {
                 $date = \DateTime::createFromFormat('U', ($dateValue - 25569) * 86400);
+
                 return $date ? $date->format('Y-m-d') : null;
             }
 
@@ -329,6 +411,7 @@ class UploadSF1 extends Component
         // Check if format is "lastname, firstname, middlename" or similar
         if (strpos($fullname, ',') !== false) {
             $parts = array_map('trim', explode(',', $fullname));
+
             return [
                 'last_name' => $parts[0] ?? null,
                 'first_name' => $parts[1] ?? null,

@@ -87,6 +87,18 @@
 						class="px-3 py-2 bg-white border rounded text-sm">Clear</button>
 				</div>
 
+				@if($swapError)
+					<div role="alert" class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+						{{ $swapError }}
+					</div>
+				@endif
+
+				@if($swapCandidatesTruncated)
+					<p class="mb-2 text-xs text-gray-500">
+						Showing the first 100 pupils. Use search to find pupils not shown here.
+					</p>
+				@endif
+
 				<div class="overflow-auto border rounded">
 					<table class="min-w-full text-sm">
 						<thead class="bg-gray-50 sticky top-0">
@@ -100,21 +112,27 @@
 						</thead>
 						<tbody>
 							@forelse($swapCandidates as $i => $cand)
-								<tr class="border-t">
+								<tr class="border-t" wire:key="swap-candidate-{{ $cand->id }}">
 									<td class="px-3 py-2 align-top">{{ $i + 1 }}</td>
 									<td class="px-3 py-2">{{ $cand->full_name }}</td>
 									<td class="px-3 py-2">{{ $cand->grade }}</td>
 									<td class="px-3 py-2">{{ $cand->section }}</td>
 									<td class="px-3 py-2">
 										<div class="flex items-center space-x-2">
-											<button wire:click.prevent="$set('swapSelectedTo', {{ $cand->id }})"
+											<button type="button" wire:click.prevent="$set('swapSelectedTo', {{ $cand->id }})"
 												class="px-2 py-1 bg-blue-600 text-white rounded text-xs">Select</button>
 
 											@if($swapSelectedTo == $cand->id)
 												<input wire:model.defer="swapReason" type="text" placeholder="Reason"
 													class="px-2 py-1 border rounded text-sm" />
-												<button wire:click="applySwap({{ $cand->id }})"
-													class="px-2 py-1 bg-green-600 text-white rounded text-xs">Save</button>
+												<button type="button"
+													wire:click="applySwap({{ $cand->id }})"
+													wire:loading.attr="disabled"
+													wire:target="applySwap"
+													class="px-2 py-1 bg-green-600 text-white rounded text-xs disabled:cursor-not-allowed disabled:opacity-60">
+													<span wire:loading.remove wire:target="applySwap">Save</span>
+													<span wire:loading wire:target="applySwap">Saving...</span>
+												</button>
 											@endif
 										</div>
 									</td>
@@ -171,6 +189,17 @@
 			});
 		} else {
 			alert(msg);
+		}
+	});
+
+	window.addEventListener('swapped-error', function (e) {
+		var msg = (e && e.detail && e.detail.message) ? e.detail.message : 'The pupil swap could not be saved.';
+		if (typeof Swal !== 'undefined') {
+			Swal.fire({
+				icon: 'error',
+				title: 'Swap failed',
+				text: msg
+			});
 		}
 	});
 </script>

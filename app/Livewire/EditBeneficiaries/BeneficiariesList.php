@@ -2,28 +2,44 @@
 
 namespace App\Livewire\EditBeneficiaries;
 
-use Livewire\Attributes\On;
-use Livewire\Component;
-use App\Models\PrimarySecondaryBeneficiaries;
 use App\Models\Beneficiaries;
 use App\Models\NutritionalStatus;
+use App\Models\PrimarySecondaryBeneficiaries;
 use App\Models\SwappedPupils;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
+use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\On;
+use Livewire\Component;
+use Throwable;
 
 class BeneficiariesList extends Component
 {
     public $beneficiaries;
+
     public $setBeneficiaries = false;
+
     public $search = '';
+
     // Swap modal state
     public $showSwapModal = false;
+
     public $swapFromId = null;
+
     public $swapCandidates = [];
+
+    public $swapCandidatesTruncated = false;
+
     public $swapSelectedTo = null;
+
     public $swapReason = null;
+
     public $swapSearch = '';
+
+    public $swapError = null;
+
+    private const SWAP_CANDIDATE_LIMIT = 100;
+
     public function mount()
     {
         $this->getBeneficiearies();
@@ -34,7 +50,7 @@ class BeneficiariesList extends Component
         $query = NutritionalStatus::query()->where('isBeneficiary', true);
 
         if ($this->search && trim($this->search) !== '') {
-            $s = '%' . trim($this->search) . '%';
+            $s = '%'.trim($this->search).'%';
             $query->where(function ($q) use ($s) {
                 $q->where('full_name', 'like', $s)
                     ->orWhere('grade', 'like', $s)
@@ -54,7 +70,7 @@ class BeneficiariesList extends Component
 
     public function getBeneficiearies()
     {
-        $this->beneficiaries = NutritionalStatus::where('isBeneficiary', "=", true)->get();
+        $this->beneficiaries = NutritionalStatus::where('isBeneficiary', '=', true)->get();
         $this->setBeneficiaries = true;
     }
 
@@ -66,6 +82,9 @@ class BeneficiariesList extends Component
     public function openSwapModal($fromPupilId)
     {
         $this->swapFromId = $fromPupilId;
+        $this->swapSelectedTo = null;
+        $this->swapReason = null;
+        $this->swapError = null;
         // load candidates (initially unfiltered)
         $this->searchSwapCandidates();
         $this->showSwapModal = true;
@@ -73,10 +92,14 @@ class BeneficiariesList extends Component
 
     public function searchSwapCandidates()
     {
+        $this->swapSelectedTo = null;
+        $this->swapReason = null;
+        $this->swapError = null;
+
         $query = NutritionalStatus::query()->where('isBeneficiary', false);
 
         if ($this->swapSearch && trim($this->swapSearch) !== '') {
-            $s = '%' . trim($this->swapSearch) . '%';
+            $s = '%'.trim($this->swapSearch).'%';
             $query->where(function ($q) use ($s) {
                 $q->where('full_name', 'like', $s)
                     ->orWhere('grade', 'like', $s)
@@ -86,12 +109,21 @@ class BeneficiariesList extends Component
 
         $query->orderByRaw("\n            CASE\n                WHEN grade = 'k' THEN 0\n                WHEN grade = '1' THEN 1\n                WHEN grade = '2' THEN 2\n                WHEN grade = '3' THEN 3\n                WHEN grade = '4' THEN 4\n                WHEN grade = '5' THEN 5\n                WHEN grade = '6' THEN 6\n                WHEN grade = '7' THEN 7\n                WHEN grade = '8' THEN 8\n                WHEN grade = '9' THEN 9\n                WHEN grade = '10' THEN 10\n                WHEN grade = '11' THEN 11\n                WHEN grade = '12' THEN 12\n                WHEN grade = 'non_graded' THEN 13\n                ELSE 14\n            END\n        ");
 
-        $this->swapCandidates = $query->limit(2000)->get();
+        $candidates = $query
+            ->select(['id', 'full_name', 'grade', 'section'])
+            ->limit(self::SWAP_CANDIDATE_LIMIT + 1)
+            ->get();
+
+        $this->swapCandidatesTruncated = $candidates->count() > self::SWAP_CANDIDATE_LIMIT;
+        $this->swapCandidates = $candidates->take(self::SWAP_CANDIDATE_LIMIT);
     }
 
     public function clearSwapSearch()
     {
         $this->swapSearch = '';
+        $this->swapSelectedTo = null;
+        $this->swapReason = null;
+        $this->swapError = null;
         $this->searchSwapCandidates();
     }
 
@@ -100,60 +132,88 @@ class BeneficiariesList extends Component
         $this->showSwapModal = false;
         $this->swapFromId = null;
         $this->swapCandidates = [];
+        $this->swapCandidatesTruncated = false;
         $this->swapSelectedTo = null;
+        $this->swapReason = null;
+        $this->swapError = null;
     }
 
     public function applySwap($toId)
     {
-        if (!$this->swapFromId || !$toId) {
-            session()->flash('error', 'Invalid selection');
+        $this->swapError = null;
+
+        if (! $this->swapFromId || ! $toId) {
+            $this->showSwapError('Please select a valid replacement pupil.');
+
             return;
         }
 
         if ($this->swapFromId == $toId) {
-            session()->flash('error', 'Replacement must be different');
+            $this->showSwapError('The replacement must be a different pupil.');
+
             return;
         }
 
-        DB::beginTransaction();
         try {
-            $from = NutritionalStatus::where('id', $this->swapFromId)->lockForUpdate()->first();
-            $to = NutritionalStatus::where('id', $toId)->lockForUpdate()->first();
+            DB::transaction(function () use ($toId) {
+                $from = NutritionalStatus::where('id', $this->swapFromId)->lockForUpdate()->first();
+                $to = NutritionalStatus::where('id', $toId)->lockForUpdate()->first();
 
-            if (!$from || !$to) {
-                throw new \Exception('Pupil record missing');
-            }
+                if (! $from || ! $to) {
+                    throw new DomainException('One of the pupil records no longer exists.');
+                }
 
-            if (!$from->isBeneficiary) {
-                throw new \Exception('Source pupil is not a beneficiary');
-            }
+                if (! $from->isBeneficiary) {
+                    throw new DomainException('The selected pupil is no longer a beneficiary.');
+                }
 
-            if ($to->isBeneficiary) {
-                throw new \Exception('Target pupil is already a beneficiary');
-            }
+                if ($to->isBeneficiary) {
+                    throw new DomainException('The replacement pupil is already a beneficiary.');
+                }
 
-            $from->isBeneficiary = false;
-            $from->save();
+                if (SwappedPupils::where('old_pupil_id', $from->id)->exists()) {
+                    throw new DomainException('This beneficiary has already been replaced before.');
+                }
 
-            $to->isBeneficiary = true;
-            $to->save();
+                $from->isBeneficiary = false;
+                $from->save();
 
-            SwappedPupils::create([
-                'old_pupil_id' => $from->id,
-                'new_pupil_id' => $to->id,
-                'reason' => $this->swapReason,
-                'swap_date' => now(),
+                $to->isBeneficiary = true;
+                $to->save();
+
+                SwappedPupils::create([
+                    'old_pupil_id' => $from->id,
+                    'new_pupil_id' => $to->id,
+                    'reason' => $this->swapReason,
+                    'swap_date' => now(),
+                ]);
+            });
+        } catch (DomainException $e) {
+            $this->showSwapError('Swap failed: '.$e->getMessage());
+
+            return;
+        } catch (Throwable $e) {
+            Log::warning('Beneficiary swap failed.', [
+                'from_pupil_id' => $this->swapFromId,
+                'to_pupil_id' => $toId,
+                'error' => $e->getMessage(),
             ]);
 
-            DB::commit();
-            session()->flash('success', 'Swap saved');
-            $this->dispatch('swapped-success', ['message' => 'Pupil swap completed successfully']);
-            $this->closeSwapModal();
-            $this->getBeneficiearies();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Swap failed: ' . $e->getMessage());
+            $this->showSwapError('The swap could not be saved. Please try again.');
+
+            return;
         }
+
+        session()->flash('success', 'Swap saved');
+        $this->dispatch('swapped-success', message: 'Pupil swap completed successfully');
+        $this->closeSwapModal();
+        $this->getBeneficiearies();
+    }
+
+    private function showSwapError(string $message): void
+    {
+        $this->swapError = $message;
+        $this->dispatch('swapped-error', message: $message);
     }
 
     #[On('primary_secondary_saved')]
@@ -164,7 +224,7 @@ class BeneficiariesList extends Component
         $beneficiariesCount = Beneficiaries::first();
         $primary = PrimarySecondaryBeneficiaries::where('name', 'Primary')->first();
 
-        //setting beneficiaries as a collection with no value
+        // setting beneficiaries as a collection with no value
         $beneficiaries = NutritionalStatus::where('grade', '100')->get();
         $remaining = $beneficiariesCount->beneficiaries_count;
 
@@ -176,7 +236,7 @@ class BeneficiariesList extends Component
             $beneficiaries = $beneficiaries->merge($allKinderBeneficiaries);
             $remaining = $remaining - $allKinderBeneficiaries->count();
         }
-        Log::info($remaining . ': remaining k before grade-based primary selection');
+        Log::info($remaining.': remaining k before grade-based primary selection');
         if ($primary->all_grade_1 == true) {
             $allGrade1 = NutritionalStatus::where('grade', '=', '1')
                 ->limit($remaining)
@@ -185,7 +245,7 @@ class BeneficiariesList extends Component
             $beneficiaries = $beneficiaries->merge($allGrade1);
             $remaining = $remaining - $allGrade1->count();
         }
-Log::info($remaining . ': remaining 1 before grade-based primary selection');
+        Log::info($remaining.': remaining 1 before grade-based primary selection');
         if ($primary->all_grade_2 == true) {
             $allGrade2 = NutritionalStatus::where('grade', '=', '2')
                 ->limit($remaining)
@@ -205,13 +265,13 @@ Log::info($remaining . ': remaining 1 before grade-based primary selection');
         }
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
-            //get primary beneficiaries
+            // get primary beneficiaries
             $primarybeneficiaries = NutritionalStatus::whereIn('nutritional_status', [
                 'Severely Wasted',
                 'Wasted',
             ])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
-                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
+                ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->limit($remaining)
                 ->orderByRaw("
                     CASE
@@ -238,7 +298,7 @@ Log::info($remaining . ': remaining 1 before grade-based primary selection');
             $phase1 = NutritionalStatus::where('nutritional_status', 'Normal')
                 ->whereIn('height_for_age', ['Severely Stunted', 'Stunted'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
-                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
+                ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->orderByRaw("
                     CASE
                         WHEN grade = 'k' THEN 0
@@ -262,7 +322,7 @@ Log::info($remaining . ': remaining 1 before grade-based primary selection');
 
             $phase2 = NutritionalStatus::where('nutritional_status', 'Normal')
                 ->whereIn('height_for_age', ['Normal', 'Tall'])
-                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
+                ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->where(function ($q) {
                     $q->where('_4ps', 1)
                         ->orWhere('ip', 1)
@@ -291,7 +351,7 @@ Log::info($remaining . ': remaining 1 before grade-based primary selection');
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
 
             $phase3 = NutritionalStatus::whereIn('nutritional_status', ['normal'])
-                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
+                ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->orderByRaw("
                     CASE
@@ -315,7 +375,7 @@ Log::info($remaining . ': remaining 1 before grade-based primary selection');
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
             $phase4 = NutritionalStatus::whereIn('height_for_age', ['normal', 'tall'])
-                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
+                ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->orderByRaw("
                     CASE
@@ -339,7 +399,7 @@ Log::info($remaining . ': remaining 1 before grade-based primary selection');
 
         if ($beneficiariesCount->beneficiaries_count > $beneficiaries->count()) {
             $phase5 = NutritionalStatus::whereIn('nutritional_status', ['overweight'])
-                ->whereIn('grade', ['k','1','2','3','4','5','6','non_graded'])
+                ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->orderByRaw("
                     CASE

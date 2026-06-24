@@ -439,7 +439,7 @@ class Buttons extends Component
             $sheet = $spreadsheet->getActiveSheet();
 
             $sheet->setCellValueByColumnAndRow(1, 4, "NUTRITIONAL STATUS REPORT OF " . strtoupper(auth()->user()->school->school_name) ?? '');
-            $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2025 - 2026");
+            $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2026 - 2027");
 
             $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
             $sheet->setCellValueByColumnAndRow(2, 40, $schoolProfile?->school_focal_name ?? '');
@@ -662,7 +662,7 @@ class Buttons extends Component
             $sheet = $spreadsheet->getActiveSheet();
 
             $sheet->setCellValueByColumnAndRow(1, 4, "NUTRITIONAL STATUS REPORT OF " . strtoupper(auth()->user()->school->school_name) ?? '');
-            $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2025 - 2026");
+            $sheet->setCellValueByColumnAndRow(1, 5, "Baseline SY 2026 - 2027");
 
             $schoolProfile = SchoolProfile::where('school_id', auth()->user()->school_id)->first();
             $sheet->setCellValueByColumnAndRow(2, 34, $schoolProfile?->school_focal_name ?? '');

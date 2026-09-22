@@ -3,16 +3,22 @@
 namespace App\Livewire\Dashboard\Pupils;
 
 use App\Models\HfaSimplifiedVersion;
+use App\Models\BmiVersionSimplefied;
 use Livewire\Component;
 use App\Models\NutritionalStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Jantinnerezo\LivewireAlert\Facades\LivewireAlert;
 
 class Add extends Component
 {
     public $first_name;
     public $last_name;
     public $suffix_name;
+    public $search_lastname = '';
+    public $searchResults = [];
+    public $editingId = null;
+    public $showForm = true;
     public $date_of_birth;
     public $date_of_weighing;
     public $weight;
@@ -20,9 +26,9 @@ class Add extends Component
     public $sex;
     public $grade;
     public $section;
-    public $age_years_months;
-    public $age_years;
-    public $age_months;
+    public $age_years_months = null;
+    public $age_years = null;
+    public $age_months = null;
     public $bmi;
     public $nutritional_status;
     public $height_for_age;
@@ -66,86 +72,252 @@ class Add extends Component
     {
         $this->validate();
 
-        // compute age_years and age_months from birthday + weighing date when possible
-        if ($this->date_of_birth) {
-            $weighDate = $this->date_of_weighing ? Carbon::parse($this->date_of_weighing) : Carbon::now();
-            $dob = Carbon::parse($this->date_of_birth);
-            $years = $dob->diffInYears($weighDate);
-            $months = $dob->diffInMonths($weighDate) - ($years * 12);
-            $this->age_years = $years;
-            $this->age_months = $months;
-        }
-
         $fullName = trim("{$this->last_name}, {$this->first_name} {$this->suffix_name}");
-        // Remove trailing comma and extra spaces if suffix_name is empty
         $fullName = preg_replace('/,\s*$/', '', $fullName);
 
+        $this->recalculateAge();
+        $this->getHFA();
+        $this->getBMI();
+
         Log::info($this->last_name);
-        $record = NutritionalStatus::create([
-            'full_name' => $fullName,
-            'first_name' => $this->first_name,
-            'last_name' => $this->last_name,
-            'suffix_name' => $this->suffix_name ?: null,
-            'birthday' => $this->date_of_birth ?: null,
-            'sex' => $this->sex ?: null,
-            'weight' => $this->weight ?: null,
-            'height' => $this->height ?: null,
-            'grade' => trim($this->grade),
-            'section' => trim($this->section),
-            'age_years' => $this->age_years ?: null,
-            'age_months' => $this->age_months ?: null,
-            'bmi' => $this->bmi ?: null,
-            'nutritional_status' => $this->nutritional_status ?: null,
-            'height_for_age' => $this->height_for_age ?: null,
-            'date_of_weighing' => $this->date_of_weighing ?: null,
-            // additional flags
-            '_4ps' => $this->fourps ? 1 : 0,
-            'ip' => $this->ip ? 1 : 0,
-            'pardo' => $this->pardo ? 1 : 0,
-            'dewormed' => $this->dewormed ? 1 : 0,
-            'parent_consent_milk' => $this->parent_consent_milk ? 1 : 0,
-            'sbfp_previous_beneficiary' => $this->sbfp_previous_beneficiary ? 1 : 0,
-        ]);
+        if ($this->editingId) {
+            $record = NutritionalStatus::find($this->editingId);
+            if ($record) {
+                $record->update([
+                    'full_name' => $fullName,
+                    'first_name' => $this->first_name,
+                    'last_name' => $this->last_name,
+                    'suffix_name' => $this->suffix_name ?: null,
+                    'birthday' => $this->date_of_birth ?: null,
+                    'sex' => $this->sex ?: null,
+                    'weight' => $this->weight ?: null,
+                    'height' => $this->height ?: null,
+                    'grade' => trim($this->grade),
+                    'section' => trim($this->section),
+                    'age_years' => $this->age_years ?: null,
+                    'age_months' => $this->age_months ?: null,
+                    'bmi' => $this->bmi ?: null,
+                    'nutritional_status' => $this->nutritional_status ?: null,
+                    'height_for_age' => $this->height_for_age ?: null,
+                    'date_of_weighing' => $this->date_of_weighing ?: null,
+                    '_4ps' => $this->fourps ? 1 : 0,
+                    'ip' => $this->ip ? 1 : 0,
+                    'pardo' => $this->pardo ? 1 : 0,
+                    'dewormed' => $this->dewormed ? 1 : 0,
+                    'parent_consent_milk' => $this->parent_consent_milk ? 1 : 0,
+                    'sbfp_previous_beneficiary' => $this->sbfp_previous_beneficiary ? 1 : 0,
+                ]);
+            }
+            } else {
+            Log::info('_4ps: ' . $this->fourps);
+            $record = NutritionalStatus::create([
+                'full_name' => $fullName,
+                'first_name' => $this->first_name,
+                'last_name' => $this->last_name,
+                'suffix_name' => $this->suffix_name ?: null,
+                'birthday' => $this->date_of_birth ?: null,
+                'sex' => $this->sex ?: null,
+                'weight' => $this->weight ?: null,
+                'height' => $this->height ?: null,
+                'grade' => trim($this->grade),
+                'section' => trim($this->section),
+                'age_years' => $this->age_years ?: null,
+                'age_months' => $this->age_months ?: null,
+                'bmi' => $this->bmi ?: null,
+                'nutritional_status' => $this->nutritional_status ?: null,
+                'height_for_age' => $this->height_for_age ?: null,
+                'date_of_weighing' => $this->date_of_weighing ?: null,
+                // additional flags
+                '_4ps' => $this->fourps ? 1 : 0,
+                'ip' => $this->ip ? 1 : 0,
+                'pardo' => $this->pardo ? 1 : 0,
+                'dewormed' => $this->dewormed ? 1 : 0,
+                'parent_consent_milk' => $this->parent_consent_milk ? 1 : 0,
+                'sbfp_previous_beneficiary' => $this->sbfp_previous_beneficiary ? 1 : 0,
+            ]);
+        }
 
         // notify the front-end so the UI can show lastly added pupil
-        $this->dispatch('pupil-saved', $record->full_name);
+        $this->dispatch('pupil-saved', ['name' => $record->full_name ?? 'Student Lastly added']);
+        $this->notif();
 
-        session()->flash('success', 'Pupil saved');
+        // reset form (clear editing state too)
+        $this->editingId = null;
+        //$this->showForm = false;
+        $this->search_lastname = '';
+        $this->searchResults = [];
         $this->reset(['first_name', 'last_name', 'suffix_name', 'date_of_birth', 'date_of_weighing', 'weight', 'height', 'sex', 'age_years_months', 'age_years', 'age_months', 'bmi', 'nutritional_status', 'height_for_age', 'fourps', 'ip', 'pardo', 'dewormed', 'parent_consent_milk', 'sbfp_previous_beneficiary']);
         // reset date_of_weighing to today
         $this->date_of_weighing = date('Y-m-d');
     }
 
+    public function searchLastname()
+    {
+        $term = trim($this->search_lastname);
+        if ($term === '') {
+            $this->searchResults = [];
+            return;
+        }
+        $this->searchResults = NutritionalStatus::where('last_name', 'like', $term . '%')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->limit(20)
+            ->get();
+    }
+
+    public function selectExisting($id)
+    {
+        $record = NutritionalStatus::find($id);
+        if (!$record) return;
+        $this->editingId = $record->id;
+        $this->showForm = true;
+        $this->first_name = $record->first_name;
+        $this->last_name = $record->last_name;
+        $this->suffix_name = $record->suffix_name;
+        $this->date_of_birth = $record->birthday ? Carbon::parse($record->birthday)->format('Y-m-d') : null;
+        // $this->date_of_weighing = $record->date_of_weighing ?: date('d-m-Y');
+        $this->weight = $record->weight;
+        $this->height = $record->height;
+        $this->sex = $record->sex;
+        $this->grade = $record->grade;
+        $this->section = $record->section;
+        $this->age_years = $record->age_years;
+        $this->age_months = $record->age_months;
+        $this->bmi = $record->bmi;
+        $this->nutritional_status = $record->nutritional_status;
+        $this->height_for_age = $record->height_for_age;
+        $this->fourps = (bool) $record->_4ps;
+        $this->ip = (bool) $record->ip;
+        $this->pardo = (bool) $record->pardo;
+        $this->dewormed = (bool) $record->dewormed;
+        $this->parent_consent_milk = (bool) $record->parent_consent_milk;
+        $this->sbfp_previous_beneficiary = (bool) $record->sbfp_previous_beneficiary;
+        $this->searchResults = [];
+    }
+
+    public function createNew()
+    {
+        $this->editingId = null;
+        $this->showForm = true;
+        $this->searchResults = [];
+        $this->search_lastname = '';
+        $this->reset(['first_name', 'last_name', 'suffix_name', 'date_of_birth', 'weight', 'height', 'sex', 'age_years_months', 'age_years', 'age_months', 'bmi', 'nutritional_status', 'height_for_age', 'fourps', 'ip', 'pardo', 'dewormed', 'parent_consent_milk', 'sbfp_previous_beneficiary']);
+        $this->date_of_weighing = date('Y-m-d');
+    }
+
+    public function hideForm()
+    {
+        $this->editingId = null;
+        // $this->showForm = false;
+        $this->searchResults = [];
+        $this->search_lastname = '';
+        $this->reset(['first_name', 'last_name', 'suffix_name', 'date_of_birth', 'weight', 'height', 'sex', 'age_years_months', 'age_years', 'age_months', 'bmi', 'nutritional_status', 'height_for_age', 'fourps', 'ip', 'pardo', 'dewormed', 'parent_consent_milk', 'sbfp_previous_beneficiary']);
+        $this->date_of_weighing = date('Y-m-d');
+    }
+
+    public function notif()
+    {
+        LivewireAlert::title('Changes saved!')
+            ->success()
+            ->show();
+    }
+
+    protected function recalculateAge(): void
+    {
+        if (!$this->date_of_birth) return;
+
+        $weighDate = $this->date_of_weighing
+            ? Carbon::parse($this->date_of_weighing)
+            : Carbon::now();
+        $dob = Carbon::parse($this->date_of_birth);
+
+        $this->age_years  = $dob->diffInYears($weighDate);
+        $this->age_months = $dob->diffInMonths($weighDate) - ($this->age_years * 12);
+    }
+
     public function getHFA()
     {
-        $ageInMonths = $this->age_months + ($this->age_years * 12);
-        $height    = $this->height;
-        $gender    = $this->sex == 'm' ? 'male' : 'female';
+        $ageInMonths = (($this->age_years ?? 0) * 12) + ($this->age_months ?? 0);
+        $height      = $this->height;
+        $gender      = $this->sex == 'm' ? 'male' : 'female';
 
-        Log::info($ageInMonths . ' ' . $height . ' ' . $gender);
         $hfa = HfaSimplifiedVersion::where('month', $ageInMonths)
             ->where('gender', $gender)
             ->first();
 
-        Log::info($hfa);
-        if (!$hfa) {
-            return;
-        }
-
-        $status = "";
+        if (!$hfa) return;
 
         if ($height < $hfa->less_negative_3sd) {
-            $status = 'Severely Stunted';
+            $this->height_for_age = 'Severely Stunted';
         } elseif ($height <= $hfa->to_less_negative_2sd) {
-            $status = 'Stunted';
+            $this->height_for_age = 'Stunted';
         } elseif ($height <= $hfa->to_positive_2sd) {
-            $status = 'Normal';
+            $this->height_for_age = 'Normal';
         } else {
-            $status = 'Tall';
+            $this->height_for_age = 'Tall';
         }
-        Log::info('HFA Status: ' . $status);
-        $this->height_for_age = $status;
     }
+
+    public function getBMI()
+    {
+        // Always recalculate BMI from current height/weight
+        if ($this->weight && $this->height) {
+            $h = $this->height / 100.0;
+            if ($h > 0) {
+                $this->bmi = round($this->weight / ($h * $h), 2);
+            }
+        }
+
+        $ageInMonths = (($this->age_years ?? 0) * 12) + ($this->age_months ?? 0);
+        $bmi = $this->bmi;
+        $gender = $this->sex == 'm' ? 'm' : 'f';
+
+        // Try to find WHO BMI-for-age reference in DB
+        $ref = null;
+        if ($ageInMonths && $bmi !== null) {
+            $ref = BmiVersionSimplefied::where('months', $ageInMonths)
+                ->where('sex', $gender)
+                ->first();
+        }
+
+        $status = '';
+
+        if ($ref) {
+            if ($bmi < $ref->sd_minus_3) {
+                $status = 'Severely Wasted';
+            } elseif ($bmi < $ref->sd_minus_2) {
+                $status = 'Wasted';
+            } elseif ($bmi <= $ref->sd_plus_2) {
+                $status = 'Normal';
+            } elseif ($bmi <= $ref->sd_plus_3) {
+                $status = 'Overweight';
+            } else {
+                $status = 'Obese';
+            }
+        } else {
+            // Fallback heuristic when DB/API reference is missing
+            if ($bmi === null) {
+                $status = '';
+            } else {
+                if ($bmi < 16) {
+                    $status = 'Severely Wasted';
+                } elseif ($bmi < 17) {
+                    $status = 'Wasted';
+                } elseif ($bmi <= 25) {
+                    $status = 'Normal';
+                } elseif ($bmi <= 30) {
+                    $status = 'Overweight';
+                } else {
+                    $status = 'Obese';
+                }
+            }
+        }
+
+        $this->nutritional_status = $status;
+        Log::info('Computed BMI status: ' . $status . ' (ageMonths=' . $ageInMonths . ', bmi=' . $bmi . ')');
+    }
+
+    
 
     public function render()
     {

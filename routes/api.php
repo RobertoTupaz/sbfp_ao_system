@@ -20,3 +20,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::any('get-hfa', [Controller::class,'getHFA']);
+Route::any('get-bmi', [Controller::class,'getBMI']);

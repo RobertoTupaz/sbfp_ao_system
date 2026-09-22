@@ -32,6 +32,10 @@ Route::view('/track/enrollees', 'trackEnrollees')
     ->middleware(['auth', 'verified'])
     ->name('track_enrollees');
 
+Route::view('/retain-deleted', 'retainDeleted')
+    ->middleware(['auth', 'verified'])
+    ->name('retain_deleted');
+
 Route::view('/profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
@@ -40,4 +44,14 @@ Route::view('/generate/reports', 'generateReports')
     ->middleware(['auth'])
     ->name('generate_reports');
 
-require __DIR__ . '/auth.php';
+Route::view('/analytics', 'analytics')
+    ->middleware(['auth', 'verified'])
+    ->name('analytics');
+
+Route::view('/school-profile', 'school_profile')
+    ->middleware(['auth', 'verified'])
+    ->name('school_profile');
+
+Route::get('/run-nutritional-seeder', [App\Http\Controllers\Controller::class, 'nsSeeder'])->name('run.nutritional.seeder');
+
+require __DIR__.'/auth.php';

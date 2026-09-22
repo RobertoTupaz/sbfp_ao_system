@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('schools', function (Blueprint $table) {
             $table->id();
-            $table->string('school_id')->index();
+            $table->string('school_id')->index()->unique();
             $table->string('school_name');
             $table->timestamps();
         });

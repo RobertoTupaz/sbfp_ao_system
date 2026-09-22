@@ -23,6 +23,7 @@ return new class extends Migration
     {
         Schema::table('form_1', function (Blueprint $table) {
             $table->dropForeign(['states']);
+            $table->dropColumn('states');
         });
     }
 };

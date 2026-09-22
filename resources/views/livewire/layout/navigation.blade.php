@@ -33,6 +33,12 @@ new class extends Component {
                         {{ __('Dashboard') }}
                     </x-nav-link>
                     @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                        <x-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')"
+                            wire:navigate>
+                            {{ __('Track Enrollees') }}
+                        </x-nav-link>
+                    @endif
+                    @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                         <x-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')"
                             wire:navigate>
                             {{ __('Edit Beneficiaries') }}
@@ -47,10 +53,16 @@ new class extends Component {
                             {{ __('Generate Reports') }}
                         </x-nav-link>
                     @endif
+                    <x-nav-link :href="route('analytics')" :active="request()->routeIs('analytics')" wire:navigate>
+                        {{ __('Analytics') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('school_profile')" :active="request()->routeIs('school_profile')" wire:navigate>
+                        {{ __('School Profile') }}
+                    </x-nav-link>
                     @if(!(auth()->check() && auth()->user()->role === 'focal'))
-                        <x-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')"
+                        <x-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')"
                             wire:navigate>
-                            {{ __('Track Enrollees') }}
+                            {{ __('Retain Delete') }}
                         </x-nav-link>
                     @endif
                 </div>
@@ -114,6 +126,11 @@ new class extends Component {
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
                 @if(!(auth()->check() && auth()->user()->role === 'focal'))
+                    <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
+                        {{ __('Track Enrollees') }}
+                    </x-responsive-nav-link>
+                @endif
+                @if(!(auth()->check() && in_array(auth()->user()->role, ['focal','user'])))
                     <x-responsive-nav-link :href="route('edit_beneficiaries')" :active="request()->routeIs('edit_beneficiaries')" wire:navigate>
                         {{ __('Edit Beneficiaries') }}
                     </x-responsive-nav-link>
@@ -126,9 +143,15 @@ new class extends Component {
                         {{ __('Generate Reports') }}
                     </x-responsive-nav-link>
                 @endif
+                <x-responsive-nav-link :href="route('analytics')" :active="request()->routeIs('analytics')" wire:navigate>
+                    {{ __('Analytics') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('school_profile')" :active="request()->routeIs('school_profile')" wire:navigate>
+                    {{ __('School Profile') }}
+                </x-responsive-nav-link>
                 @if(!(auth()->check() && auth()->user()->role === 'focal'))
-                    <x-responsive-nav-link :href="route('track_enrollees')" :active="request()->routeIs('track_enrollees')" wire:navigate>
-                        {{ __('Track Enrollees') }}
+                    <x-responsive-nav-link :href="route('retain_deleted')" :active="request()->routeIs('retain_deleted')" wire:navigate>
+                        {{ __('Retain Delete') }}
                     </x-responsive-nav-link>
                 @endif
         </div>

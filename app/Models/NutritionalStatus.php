@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class NutritionalStatus extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'nutritional_statuses';
+
     protected $fillable = [
         'full_name',
         'last_name',
@@ -27,12 +29,14 @@ class NutritionalStatus extends Model
         'date_of_weighing',
         'grade',
         'section',
-        '4ps',
+        '_4ps',
         'ip',
         'pardo',
         'dewormed',
         'parent_consent_milk',
         'sbfp_previous_beneficiary',
+        'isBeneficiary',
+        'deleted_by',
     ];
 
     protected $casts = [
@@ -43,5 +47,27 @@ class NutritionalStatus extends Model
         'bmi' => 'float',
         'age_years' => 'integer',
         'age_months' => 'integer',
+        '_4ps' => 'boolean',
+        'ip' => 'boolean',
+        'pardo' => 'boolean',
+        'dewormed' => 'boolean',
+        'parent_consent_milk' => 'boolean',
+        'sbfp_previous_beneficiary' => 'boolean',
+        'isBeneficiary' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (NutritionalStatus $pupil) {
+            if (! $pupil->isForceDeleting() && ! $pupil->deleted_by && auth()->check()) {
+                $pupil->deleted_by = auth()->id();
+                $pupil->saveQuietly();
+            }
+        });
+    }
+
+    public function deletedBy()
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
+    }
 }

@@ -11,15 +11,21 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithPagination;
 use Throwable;
 
 class BeneficiariesList extends Component
 {
-    public $beneficiaries;
+    use WithPagination;
 
     public $setBeneficiaries = false;
 
     public $search = '';
+
+    // the search that was last applied with the Search button
+    public $appliedSearch = '';
+
+    private const PER_PAGE = 15;
 
     // Swap modal state
     public $showSwapModal = false;
@@ -42,15 +48,44 @@ class BeneficiariesList extends Component
 
     public function mount()
     {
-        $this->getBeneficiearies();
+        $this->setBeneficiaries = true;
     }
 
     public function searchBeneficiaries()
     {
+        $this->appliedSearch = trim((string) $this->search);
+        $this->resetPage();
+    }
+
+    public function clearSearch()
+    {
+        $this->search = '';
+        $this->appliedSearch = '';
+        $this->resetPage();
+    }
+
+    /** Kinder first, then Grade 1 to 12, then non-graded; within a grade by section and name. */
+    private function orderByGrade($query)
+    {
+        return $query
+            ->orderByRaw("CASE LOWER(grade)
+                WHEN 'k' THEN 0 WHEN 'kinder' THEN 0 WHEN 'kindergarten' THEN 0
+                WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4 WHEN '5' THEN 5 WHEN '6' THEN 6
+                WHEN '7' THEN 7 WHEN '8' THEN 8 WHEN '9' THEN 9 WHEN '10' THEN 10 WHEN '11' THEN 11 WHEN '12' THEN 12
+                WHEN 'non_graded' THEN 13
+                ELSE 14
+            END")
+            ->orderBy('section')
+            ->orderBy('last_name')
+            ->orderBy('first_name');
+    }
+
+    private function beneficiariesPage()
+    {
         $query = NutritionalStatus::query()->where('isBeneficiary', true);
 
-        if ($this->search && trim($this->search) !== '') {
-            $s = '%'.trim($this->search).'%';
+        if ($this->appliedSearch !== '') {
+            $s = '%'.$this->appliedSearch.'%';
             $query->where(function ($q) use ($s) {
                 $q->where('full_name', 'like', $s)
                     ->orWhere('grade', 'like', $s)
@@ -58,25 +93,20 @@ class BeneficiariesList extends Component
             });
         }
 
-        $this->beneficiaries = $query->get();
-        $this->setBeneficiaries = true;
-    }
-
-    public function clearSearch()
-    {
-        $this->search = '';
-        $this->getBeneficiearies();
-    }
-
-    public function getBeneficiearies()
-    {
-        $this->beneficiaries = NutritionalStatus::where('isBeneficiary', '=', true)->get();
-        $this->setBeneficiaries = true;
+        return $this->orderByGrade($query)->paginate(self::PER_PAGE);
     }
 
     public function render()
     {
-        return view('livewire.edit-beneficiaries.beneficiaries-list');
+        $beneficiaries = $this->beneficiariesPage();
+
+        // e.g. the last pupil of the last page was swapped out: go back to the new last page
+        if ($beneficiaries->isEmpty() && $beneficiaries->currentPage() > 1) {
+            $this->setPage($beneficiaries->lastPage());
+            $beneficiaries = $this->beneficiariesPage();
+        }
+
+        return view('livewire.edit-beneficiaries.beneficiaries-list', ['beneficiaries' => $beneficiaries]);
     }
 
     public function openSwapModal($fromPupilId)
@@ -107,7 +137,7 @@ class BeneficiariesList extends Component
             });
         }
 
-        $query->orderByRaw("\n            CASE\n                WHEN grade = 'k' THEN 0\n                WHEN grade = '1' THEN 1\n                WHEN grade = '2' THEN 2\n                WHEN grade = '3' THEN 3\n                WHEN grade = '4' THEN 4\n                WHEN grade = '5' THEN 5\n                WHEN grade = '6' THEN 6\n                WHEN grade = '7' THEN 7\n                WHEN grade = '8' THEN 8\n                WHEN grade = '9' THEN 9\n                WHEN grade = '10' THEN 10\n                WHEN grade = '11' THEN 11\n                WHEN grade = '12' THEN 12\n                WHEN grade = 'non_graded' THEN 13\n                ELSE 14\n            END\n        ");
+        $this->orderByGrade($query);
 
         $candidates = $query
             ->select(['id', 'full_name', 'grade', 'section'])
@@ -207,7 +237,6 @@ class BeneficiariesList extends Component
         session()->flash('success', 'Swap saved');
         $this->dispatch('swapped-success', message: 'Pupil swap completed successfully');
         $this->closeSwapModal();
-        $this->getBeneficiearies();
     }
 
     private function showSwapError(string $message): void
@@ -219,7 +248,8 @@ class BeneficiariesList extends Component
     #[On('primary_secondary_saved')]
     public function getBeneficiaries()
     {
-        NutritionalStatus::query()->update(['isBeneficiary' => false]);
+        // reset in every state; the re-selection below is mirrored back to the other states
+        NutritionalStatus::withoutGlobalScope('survey_state')->update(['isBeneficiary' => false]);
 
         $beneficiariesCount = Beneficiaries::first();
         $primary = PrimarySecondaryBeneficiaries::where('name', 'Primary')->first();
@@ -295,8 +325,8 @@ class BeneficiariesList extends Component
 
             $remaining = $beneficiariesCount->beneficiaries_count - $beneficiaries->count();
 
-            $phase1 = NutritionalStatus::where('nutritional_status', 'Normal')
-                ->whereIn('height_for_age', ['Severely Stunted', 'Stunted'])
+            // Severely stunted / stunted pupils of any weight status (wasted ones are already selected above)
+            $phase1 = NutritionalStatus::whereIn('height_for_age', ['Severely Stunted', 'Stunted'])
                 ->whereNotIn('id', $beneficiaries->pluck('id'))
                 ->whereIn('grade', ['k', '1', '2', '3', '4', '5', '6', 'non_graded'])
                 ->orderByRaw("
@@ -427,7 +457,7 @@ class BeneficiariesList extends Component
         });
 
         if ($setBeneficiariesLocal) {
-            $this->beneficiaries = $beneficiaries;
+            $this->resetPage();
             $this->setBeneficiaries = true;
         } else {
             $this->setBeneficiaries = false;

@@ -16,6 +16,8 @@ class NutritionalStatusSeeder extends Seeder
     {
         $faker = Faker::create();
 
+        // the fake pupils are created in one state, then added to the other states in one go
+        NutritionalStatus::withoutRosterSync(function () use ($faker) {
         for ($i = 0; $i < 3000; $i++) {
             $firstName = $faker->firstName;
             $lastName = $faker->lastName;
@@ -45,6 +47,7 @@ class NutritionalStatusSeeder extends Seeder
                 'sbfp_previous_beneficiary' => $faker->randomElement([0, 1]),
             ]);
         }
+        });
     }
 
         public function getHFA($num) {

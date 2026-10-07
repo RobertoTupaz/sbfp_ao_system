@@ -16,6 +16,68 @@
     </div> --}}
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <a href="#" role="button" aria-label="Generate SBFP Forms 2026" wire:click.prevent="generateForms2026"
+            wire:loading.attr="disabled" wire:target="generateForms2026"
+            class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
+            <div class="flex items-center justify-center mb-4">
+                <div wire:loading wire:target="generateForms2026" class="flex items-center justify-center">
+                    <svg class="animate-spin h-12 w-12 text-rose-600" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="generateForms2026">
+                    <svg class="w-12 h-12 text-rose-600 group-hover:text-rose-700"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 12h6m-6 4h6M7 8h10M5 6h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="text-lg font-medium text-gray-800">
+                <span wire:loading.remove wire:target="generateForms2026">SBFP Forms 2026</span>
+                <span wire:loading wire:target="generateForms2026">Generating...</span>
+            </div>
+            <div class="text-sm text-gray-500 mt-2">
+                <span wire:loading.remove wire:target="generateForms2026">Generate Forms 1A, 1B and 2 (disaggregated by sex) for the selected baseline/midline/endline data</span>
+                <span wire:loading wire:target="generateForms2026">Please wait — preparing download</span>
+            </div>
+        </a>
+
+        <a href="#" role="button" aria-label="Generate SBFP Form 7 PTR 2026" wire:click.prevent="generateForm7Ptr2026"
+            wire:loading.attr="disabled" wire:target="generateForm7Ptr2026"
+            class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
+            <div class="flex items-center justify-center mb-4">
+                <div wire:loading wire:target="generateForm7Ptr2026" class="flex items-center justify-center">
+                    <svg class="animate-spin h-12 w-12 text-amber-600" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="generateForm7Ptr2026">
+                    <svg class="w-12 h-12 text-amber-600 group-hover:text-amber-700"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M9 12h6m-6 4h6M7 8h10M5 6h14v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="text-lg font-medium text-gray-800">
+                <span wire:loading.remove wire:target="generateForm7Ptr2026">SBFP Form 7 PTR 2026</span>
+                <span wire:loading wire:target="generateForm7Ptr2026">Generating...</span>
+            </div>
+            <div class="text-sm text-gray-500 mt-2">
+                <span wire:loading.remove wire:target="generateForm7Ptr2026">Generate the school-level Program Terminal Report (ES and J-SHS sheets) using baseline as before and endline as after feeding</span>
+                <span wire:loading wire:target="generateForm7Ptr2026">This can take up to a minute — preparing download</span>
+            </div>
+        </a>
+
         <a href="#" role="button" aria-label="Generate SNS Elementary Form" wire:click.prevent="generateSnsElem"
             class="group block bg-white rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-1 transition p-6 text-center cursor-pointer">
             <div class="flex items-center justify-center mb-4">
@@ -248,6 +310,18 @@
         }
 
         window.addEventListener('form2-ready', function(e) {
+            var url = e && e.detail && e.detail.url ? e.detail.url : null;
+            if (!url && e && e.detail) url = e.detail;
+            _gf_trigger_download(url);
+        });
+
+        window.addEventListener('form7-ptr-2026-ready', function(e) {
+            var url = e && e.detail && e.detail.url ? e.detail.url : null;
+            if (!url && e && e.detail) url = e.detail;
+            _gf_trigger_download(url);
+        });
+
+        window.addEventListener('forms2026-ready', function(e) {
             var url = e && e.detail && e.detail.url ? e.detail.url : null;
             if (!url && e && e.detail) url = e.detail;
             _gf_trigger_download(url);

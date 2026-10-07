@@ -27,6 +27,8 @@ class BeneficiarySwapTest extends TestCase
 
         Schema::create('nutritional_statuses', function (Blueprint $table) {
             $table->id();
+            $table->string('survey_state')->default('baseline');
+            $table->string('pupil_key')->nullable();
             $table->string('full_name')->nullable();
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();

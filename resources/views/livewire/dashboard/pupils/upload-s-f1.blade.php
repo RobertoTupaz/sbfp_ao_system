@@ -9,8 +9,8 @@
         <div class="grid sm:grid-cols-3 gap-4 items-center">
             <div class="sm:col-span-2">
                 <div class="flex items-center gap-1.5 mb-2 z-1000">
-                    <label class="block text-sm font-medium text-gray-700">SF1 upload</label>
-                    <x-feature-help>Upload a School Form 1 (SF1) Excel file exported from the DepEd LIS system. The file is parsed to extract pupil names, grade, section, birth dates, and demographic flags. Review the preview table before saving.</x-feature-help>
+                    <label class="block text-sm font-medium text-gray-700">{{ $title }}</label>
+                    <x-feature-help>{{ $help }}</x-feature-help>
                 </div>
 
                 <div class="flex items-center gap-3">

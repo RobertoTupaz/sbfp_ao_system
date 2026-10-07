@@ -110,6 +110,8 @@ class Controller extends BaseController
     {
         $faker = Faker::create();
 
+        // the fake pupils are created in the selected state, then added to the other states in one go
+        NutritionalStatus::withoutRosterSync(function () use ($faker) {
         for ($i = 0; $i < 3000; $i++) {
             $firstName = $faker->firstName;
             $lastName = $faker->lastName;
@@ -139,6 +141,7 @@ class Controller extends BaseController
                 'sbfp_previous_beneficiary' => $faker->randomElement([0, 1]),
             ]);
         }
+        });
 
         return "Seeded Successfully";
     }

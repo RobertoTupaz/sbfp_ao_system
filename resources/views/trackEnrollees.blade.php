@@ -6,6 +6,13 @@
     </x-slot>
 
     <div class="py-12">
+        @if(auth()->user()->role !== 'user' && \App\Support\SurveyState::current() !== 'baseline')
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    @livewire('dashboard.pupils.copy-measurements')
+                </div>
+            </div>
+        @endif
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 mb-4">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 @livewire('track-enrollees.base')

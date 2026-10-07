@@ -5,6 +5,9 @@ namespace App\Livewire\GenerateForms;
 use App\Models\Beneficiaries;
 use App\Models\SchoolProfile;
 use App\Models\SwappedPupils;
+use App\Support\SbfpForm7Ptr2026;
+use App\Support\SbfpForms2026;
+use App\Support\SurveyState;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\NutritionalStatus;
@@ -759,7 +762,7 @@ class Buttons extends Component
     public function generateJson()
     {
         try {
-            $records = NutritionalStatus::orderBy('id')->get();
+            $records = NutritionalStatus::withoutGlobalScope('survey_state')->orderBy('id')->get();
             $json = $records->toJson(JSON_PRETTY_PRINT);
 
             $outFileName = 'nutritional_statuses_' . time() . '.json';
@@ -799,19 +802,21 @@ class Buttons extends Component
             $fillable = $model->getFillable();
             $count = 0;
 
-            foreach ($decoded as $item) {
-                if (!is_array($item)) continue;
+            NutritionalStatus::withoutRosterSync(function () use ($decoded, $fillable, &$count) {
+                foreach ($decoded as $item) {
+                    if (!is_array($item)) continue;
 
-                $data = array_intersect_key($item, array_flip($fillable));
+                    $data = array_intersect_key($item, array_flip($fillable));
 
-                if (isset($item['id']) && $item['id']) {
-                    NutritionalStatus::updateOrCreate(['id' => $item['id']], $data);
-                } else {
-                    NutritionalStatus::create($data);
+                    if (isset($item['id']) && $item['id']) {
+                        NutritionalStatus::withoutGlobalScope('survey_state')->updateOrCreate(['id' => $item['id']], $data);
+                    } else {
+                        NutritionalStatus::create($data);
+                    }
+
+                    $count++;
                 }
-
-                $count++;
-            }
+            });
 
             $this->reset('uploadJson');
             session()->flash('success', "Imported {$count} nutritional_status records.");
@@ -994,6 +999,59 @@ class Buttons extends Component
         } catch (\Throwable $e) {
             Log::error('Error writing Form2.xlsx: ' . $e->getMessage());
             session()->flash('error', 'Failed to generate Form2.xlsx: ' . $e->getMessage());
+        }
+    }
+
+    public function generateForms2026()
+    {
+        if (! file_exists(public_path(SbfpForms2026::TEMPLATE))) {
+            session()->flash('error', 'SBFP_Forms_2026.xlsx not found in public/exel');
+            Log::error('SBFP Forms 2026 write failed - template not found');
+            return;
+        }
+
+        try {
+            $spreadsheet = (new SbfpForms2026(auth()->user()))->build();
+
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'SBFP_Forms_2026-' . SurveyState::current() . '-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save(public_path('downloaded_exel/' . $outFileName));
+
+            session()->flash('success', 'SBFP Forms 2026 generated for download.');
+            $this->dispatch('forms2026-ready', asset('downloaded_exel/' . $outFileName));
+        } catch (\Throwable $e) {
+            Log::error('Error generating SBFP Forms 2026: ' . $e->getMessage());
+            session()->flash('error', 'Failed to generate SBFP Forms 2026: ' . $e->getMessage());
+        }
+    }
+
+    public function generateForm7Ptr2026()
+    {
+        if (! file_exists(public_path(SbfpForm7Ptr2026::TEMPLATE))) {
+            session()->flash('error', 'SBFP_Form7_PTR_2026.xlsx not found in public/exel');
+            Log::error('SBFP Form 7 PTR 2026 write failed - template not found');
+            return;
+        }
+
+        try {
+            // The template is large (about 2,500 merged cells per sheet), so loading and saving take a while.
+            @set_time_limit(180);
+
+            $spreadsheet = SbfpForm7Ptr2026::forUser(auth()->user());
+
+            $schoolSlug = preg_replace('/[^A-Za-z0-9]+/', '_', auth()->user()->school?->school_name ?? 'Unknown');
+            $datetime = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $outFileName = 'SBFP_Form7_PTR_2026-' . $schoolSlug . '-' . $datetime . '.xlsx';
+            $this->ensureDownloadDir();
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save(public_path('downloaded_exel/' . $outFileName));
+
+            session()->flash('success', 'SBFP Form 7 PTR 2026 generated for download.');
+            $this->dispatch('form7-ptr-2026-ready', asset('downloaded_exel/' . $outFileName));
+        } catch (\Throwable $e) {
+            Log::error('Error generating SBFP Form 7 PTR 2026: ' . $e->getMessage());
+            session()->flash('error', 'Failed to generate SBFP Form 7 PTR 2026: ' . $e->getMessage());
         }
     }
 

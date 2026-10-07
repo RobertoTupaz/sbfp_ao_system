@@ -247,8 +247,9 @@ class Base extends Component
     {
         DB::transaction(function () {
             SwappedPupils::query()->delete();
-            NutritionalStatus::query()->update(['deleted_by' => auth()->id()]);
-            NutritionalStatus::query()->delete();
+            // the pupils are the same in every state, so they are removed from all of them
+            NutritionalStatus::withoutGlobalScope('survey_state')->update(['deleted_by' => auth()->id()]);
+            NutritionalStatus::withoutGlobalScope('survey_state')->delete();
         });
         session()->flash('success', 'All pupils moved to Retain Deleted');
 
@@ -283,8 +284,12 @@ class Base extends Component
         DB::transaction(function () use ($query) {
             $ids = (clone $query)->pluck('id');
             SwappedPupils::whereIn('old_pupil_id', $ids)->orWhereIn('new_pupil_id', $ids)->delete();
-            NutritionalStatus::whereIn('id', $ids)->update(['deleted_by' => auth()->id()]);
-            NutritionalStatus::whereIn('id', $ids)->delete();
+            // remove the same pupils from every state, not only the one being viewed
+            $keys = NutritionalStatus::whereIn('id', $ids)->pluck('pupil_key')->filter();
+            $everywhere = fn () => NutritionalStatus::withoutGlobalScope('survey_state')
+                ->where(fn ($q) => $q->whereIn('id', $ids)->orWhereIn('pupil_key', $keys));
+            $everywhere()->update(['deleted_by' => auth()->id()]);
+            $everywhere()->delete();
         });
 
         $sectionLabel = $this->selectedSection ?: 'Unspecified';

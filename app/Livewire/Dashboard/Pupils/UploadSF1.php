@@ -2,9 +2,8 @@
 
 namespace App\Livewire\Dashboard\Pupils;
 
-use App\Models\BmiVersionSimplefied;
-use App\Models\HfaSimplifiedVersion;
 use App\Models\NutritionalStatus;
+use App\Support\NutritionalCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -83,14 +82,22 @@ class UploadSF1 extends Component
         $grade = trim((string) $gradeValue);
         $gradeLower = strtolower($grade);
 
-        // Check if "kinder" or "kindergarten"
-        if ($gradeLower === 'kinder' || $gradeLower === 'kindergarten') {
-            return 'kinder';
+        // Kindergarten: "k", "kinder", "kindergarten", "grade k"
+        if (preg_match('/^(grade\s*)?(k|kinder|kindergarten)$/', $gradeLower)) {
+            return 'k';
         }
 
         // Try to extract a number from the grade
         if (preg_match('/\d+/', $grade, $matches)) {
             return $matches[0];
+        }
+
+        // Roman numerals (I–XII), e.g. "Grade V" => 5
+        if (preg_match('/\b(xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)\b/', $gradeLower, $matches)) {
+            $roman = ['i' => 1, 'ii' => 2, 'iii' => 3, 'iv' => 4, 'v' => 5, 'vi' => 6,
+                'vii' => 7, 'viii' => 8, 'ix' => 9, 'x' => 10, 'xi' => 11, 'xii' => 12];
+
+            return (string) $roman[$matches[1]];
         }
 
         // Default to non-graded
@@ -153,6 +160,30 @@ class UploadSF1 extends Component
         $this->preview = true;
     }
 
+    protected function readRows(Spreadsheet $spreadsheet): array
+    {
+        $sheet = $this->getSf1Sheet($spreadsheet);
+
+        $grade = $this->processGrade($sheet->getCell('AE'. 4)->getValue());
+        $section = trim((string) $sheet->getCell('AM'. 4)->getValue());
+
+        $rows = [];
+
+        $row = 7;
+        while (true) {
+            $lrn = trim((string) $sheet->getCell('A'.$row)->getValue());
+            if ($lrn === '' || $lrn === null) {
+                break;
+            }
+
+            $rows[] = $this->parseSf1Row($sheet, $row, $grade, $section);
+
+            $row++;
+        }
+
+        return $rows;
+    }
+
     public function save()
     {
         // If rows not parsed yet, parse from uploaded file first
@@ -175,24 +206,7 @@ class UploadSF1 extends Component
                 return;
             }
 
-            $sheet = $this->getSf1Sheet($spreadsheet);
-
-            $grade = $this->processGrade($sheet->getCell('AE'. 4)->getValue());
-            $section = trim((string) $sheet->getCell('AM'. 4)->getValue());
-
-            $this->rows = [];
-
-            $row = 7;
-            while (true) {
-                $lrn = trim((string) $sheet->getCell('A'.$row)->getValue());
-                if ($lrn === '' || $lrn === null) {
-                    break;
-                }
-
-                $this->rows[] = $this->parseSf1Row($sheet, $row, $grade, $section);
-
-                $row++;
-            }
+            $this->rows = $this->readRows($spreadsheet);
         }
 
         DB::transaction(function () {
@@ -220,6 +234,9 @@ class UploadSF1 extends Component
                     'pardo' => $this->parseBoolean($row['pardo'] ?? false),
                     'dewormed' => $this->parseBoolean($row['dewormed'] ?? false),
                     'sbfp_previous_beneficiary' => $this->parseBoolean($row['sbfp_previous_beneficiary'] ?? false),
+                    'parent_consent_milk' => array_key_exists('parent_consent_milk', $row)
+                        ? $this->parseBoolean($row['parent_consent_milk'])
+                        : null,
                 ]);
             }
         });
@@ -271,53 +288,11 @@ class UploadSF1 extends Component
         $weight = $this->parseMeasurement($row['weight'] ?? null);
         $height = $this->parseMeasurement($row['height'] ?? null);
         $ageInMonths = ((int) ($row['age_years'] ?? 0) * 12) + (int) ($row['age_months'] ?? 0);
-        $sex = $this->normalizeSex($row['sex'] ?? null);
-
-        $bmi = null;
-        $nutritionalStatus = null;
-        $heightForAge = null;
-
-        if ($weight !== null && $height !== null && $height > 0) {
-            $heightInMeters = $height / 100;
-            $bmi = round($weight / ($heightInMeters * $heightInMeters), 2);
-
-            $bmiReference = BmiVersionSimplefied::where('months', $ageInMonths)
-                ->where('sex', $sex)
-                ->first();
-
-            if ($bmiReference) {
-                $nutritionalStatus = match (true) {
-                    $bmi < $bmiReference->sd_minus_3 => 'Severely Wasted',
-                    $bmi < $bmiReference->sd_minus_2 => 'Wasted',
-                    $bmi <= $bmiReference->sd_plus_2 => 'Normal',
-                    $bmi <= $bmiReference->sd_plus_3 => 'Overweight',
-                    default => 'Obese',
-                };
-            }
-        }
-
-        if ($height !== null && $ageInMonths > 0 && in_array($sex, ['m', 'f'], true)) {
-            $hfaReference = HfaSimplifiedVersion::where('month', $ageInMonths)
-                ->where('gender', $sex === 'm' ? 'male' : 'female')
-                ->first();
-
-            if ($hfaReference) {
-                $heightForAge = match (true) {
-                    $height < $hfaReference->less_negative_3sd => 'Severely Stunted',
-                    $height <= $hfaReference->to_less_negative_2sd => 'Stunted',
-                    $height <= $hfaReference->to_positive_2sd => 'Normal',
-                    default => 'Tall',
-                };
-            }
-        }
 
         return [
             'weight' => $weight,
             'height' => $height,
-            'bmi' => $bmi,
-            'nutritional_status' => $nutritionalStatus,
-            'height_for_age' => $heightForAge,
-        ];
+        ] + NutritionalCalculator::classify($weight, $height, $ageInMonths, $this->normalizeSex($row['sex'] ?? null));
     }
 
     protected function parseMeasurement($value): ?float
@@ -465,6 +440,9 @@ class UploadSF1 extends Component
 
     public function render()
     {
-        return view('livewire.dashboard.pupils.upload-s-f1');
+        return view('livewire.dashboard.pupils.upload-s-f1', [
+            'title' => 'SF1 upload',
+            'help' => 'Upload a School Form 1 (SF1) Excel file exported from the DepEd LIS system. The file is parsed to extract pupil names, grade, section, birth dates, and demographic flags. Review the preview table before saving.',
+        ]);
     }
 }

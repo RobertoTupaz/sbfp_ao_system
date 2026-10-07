@@ -70,6 +70,9 @@ new class extends Component {
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
+                @if(auth()->check() && auth()->user()->role !== 'focal')
+                    <div class="me-4"><livewire:layout.survey-state-switcher /></div>
+                @endif
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button
@@ -155,6 +158,10 @@ new class extends Component {
                     </x-responsive-nav-link>
                 @endif
         </div>
+
+        @if(auth()->check() && auth()->user()->role !== 'focal')
+            <div class="px-4 pt-2 pb-3 border-t border-gray-200"><livewire:layout.survey-state-switcher /></div>
+        @endif
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">

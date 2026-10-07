@@ -217,7 +217,8 @@ class EditPupil extends Component
         ];
 
         if ($this->id) {
-            NutritionalStatus::where('id', $this->id)->update($data);
+            // through the model, so details such as name and grade are mirrored to the other states
+            NutritionalStatus::find($this->id)?->update($data);
             $this->dispatch('pupil-saved', $fullName);
             session()->flash('success', 'Pupil updated');
         }

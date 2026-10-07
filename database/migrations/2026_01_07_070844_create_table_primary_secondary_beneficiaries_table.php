@@ -24,8 +24,8 @@ return new class extends Migration
             $table->boolean('wasted')->default(true);
             $table->boolean('normal_weight')->default(false);
             $table->boolean('overweight_obese')->default(false);
-            $table->boolean('severely_stunted')->default(false);
-            $table->boolean('stunted')->default(false);
+            $table->boolean('severely_stunted')->default(true);
+            $table->boolean('stunted')->default(true);
             $table->boolean('normal_height')->default(false);
             $table->boolean('tall')->default(false);
             $table->boolean('_4ps')->default(false);
@@ -52,8 +52,8 @@ return new class extends Migration
                 'wasted' => 1,
                 'normal_weight' => 0,
                 'overweight_obese' => 0,
-                'severely_stunted' => 0,
-                'stunted' => 0,
+                'severely_stunted' => 1,
+                'stunted' => 1,
                 'normal_height' => 0,
                 'tall' => 0,
                 '_4ps' => 0,

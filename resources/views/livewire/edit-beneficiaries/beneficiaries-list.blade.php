@@ -16,7 +16,7 @@
 			Clear
 		</button>
 	</div>
-	@if($setBeneficiaries && $beneficiaries->count())
+	@if($beneficiaries->total())
 		<div class="space-y-3">
 			@foreach($beneficiaries as $beneficiary)
 				<div
@@ -29,7 +29,9 @@
 						<div>
 							<div class="text-sm font-medium text-gray-900">{{ $beneficiary->full_name }}</div>
 							@if(isset($beneficiary->grade))
-								<div class="text-xs text-gray-500">Grade {{ $beneficiary->grade }}</div>
+								<div class="text-xs text-gray-500">
+									{{ in_array(strtolower($beneficiary->grade), ['k', 'kinder', 'kindergarten']) ? 'Kinder' : ($beneficiary->grade === 'non_graded' ? 'Non-graded' : 'Grade '.$beneficiary->grade) }}@if($beneficiary->section) - {{ $beneficiary->section }}@endif
+								</div>
 							@endif
 						</div>
 					</div>
@@ -66,7 +68,11 @@
 				</div>
 			@endforeach
 		</div>
-	@elseif($setBeneficiaries)
+
+		<div class="mt-4">
+			{{ $beneficiaries->links() }}
+		</div>
+	@else
 		<div class="text-center text-sm text-gray-500 py-6">No beneficiaries found.</div>
 	@endif
 
